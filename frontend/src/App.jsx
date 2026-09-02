@@ -1,9 +1,27 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 
-const API_URL = "https://reconai-4kr7.onrender.com";
-
+const API_URL = "http://127.0.0.1:8000";
 function App() {
+  // =========================
+  // AUTHENTICATION
+  // =========================
+
+  const [token, setToken] = useState(
+    localStorage.getItem("reconai_token")
+  );
+
+  const [user, setUser] = useState(null);
+
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
+
+  // =========================
+  // DASHBOARD DATA
+  // =========================
+
   const [summary, setSummary] = useState(null);
   const [analytics, setAnalytics] = useState(null);
   const [exceptions, setExceptions] = useState([]);
@@ -26,12 +44,144 @@ function App() {
   const [statusFilter, setStatusFilter] = useState("ALL");
 
   // =========================
+  // LOGIN
+  // =========================
+
+  async function handleLogin(e) {
+    e.preventDefault();
+
+    setLoginError("");
+    setLoginLoading(true);
+
+    try {
+      const response = await fetch(`${API_URL}/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username,
+          password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.detail || "Invalid username or password"
+        );
+      }
+
+      localStorage.setItem(
+        "reconai_token",
+        data.access_token
+      );
+
+      setToken(data.access_token);
+    } catch (err) {
+      console.error(err);
+
+      setLoginError(
+        err.message || "Login failed. Please try again."
+      );
+    } finally {
+      setLoginLoading(false);
+    }
+  }
+
+  // =========================
+  // LOGOUT
+  // =========================
+
+  function handleLogout() {
+    localStorage.removeItem("reconai_token");
+
+    setToken(null);
+    setUser(null);
+
+    setSummary(null);
+    setAnalytics(null);
+    setExceptions([]);
+    setReconciliation([]);
+  }
+
+  // =========================
+  // AUTHENTICATED FETCH
+  // =========================
+
+  async function authenticatedFetch(url, options = {}) {
+    const currentToken =
+      localStorage.getItem("reconai_token");
+
+    const headers = {
+      ...(options.headers || {}),
+      Authorization: `Bearer ${currentToken}`,
+    };
+
+    const response = await fetch(url, {
+      ...options,
+      headers,
+    });
+
+    if (response.status === 401) {
+      handleLogout();
+      throw new Error("Your session has expired.");
+    }
+
+    return response;
+  }
+
+  // =========================
+  // VERIFY USER
+  // =========================
+
+  useEffect(() => {
+    async function verifyUser() {
+      if (!token) {
+        return;
+      }
+
+      try {
+        const response = await authenticatedFetch(
+          `${API_URL}/me`
+        );
+
+        if (!response.ok) {
+          throw new Error("Authentication failed");
+        }
+
+        const data = await response.json();
+
+        setUser(data);
+      } catch (err) {
+        console.error(err);
+
+        localStorage.removeItem(
+          "reconai_token"
+        );
+
+        setToken(null);
+        setUser(null);
+      }
+    }
+
+    verifyUser();
+  }, [token]);
+
+  // =========================
   // LOAD DASHBOARD DATA
   // =========================
 
   useEffect(() => {
     async function loadData() {
+      if (!token || !user) {
+        return;
+      }
+
       try {
+        setError("");
+
         const [
           healthResponse,
           summaryResponse,
@@ -40,26 +190,46 @@ function App() {
           reconciliationResponse,
         ] = await Promise.all([
           fetch(`${API_URL}/health`),
-          fetch(`${API_URL}/summary`),
-          fetch(`${API_URL}/analytics`),
-          fetch(`${API_URL}/exceptions`),
-          fetch(`${API_URL}/reconcile`),
+
+          authenticatedFetch(
+            `${API_URL}/summary`
+          ),
+
+          authenticatedFetch(
+            `${API_URL}/analytics`
+          ),
+
+          authenticatedFetch(
+            `${API_URL}/exceptions`
+          ),
+
+          authenticatedFetch(
+            `${API_URL}/reconcile`
+          ),
         ]);
 
         if (!healthResponse.ok) {
-          throw new Error("Health service is unavailable");
+          throw new Error(
+            "Health service is unavailable"
+          );
         }
 
         if (!summaryResponse.ok) {
-          throw new Error("Summary service is unavailable");
+          throw new Error(
+            "Summary service is unavailable"
+          );
         }
 
         if (!analyticsResponse.ok) {
-          throw new Error("Analytics service is unavailable");
+          throw new Error(
+            "Analytics service is unavailable"
+          );
         }
 
         if (!exceptionsResponse.ok) {
-          throw new Error("Exceptions service is unavailable");
+          throw new Error(
+            "Exceptions service is unavailable"
+          );
         }
 
         if (!reconciliationResponse.ok) {
@@ -68,17 +238,25 @@ function App() {
           );
         }
 
-        const healthData = await healthResponse.json();
-        const summaryData = await summaryResponse.json();
-        const analyticsData = await analyticsResponse.json();
+        const healthData =
+          await healthResponse.json();
+
+        const summaryData =
+          await summaryResponse.json();
+
+        const analyticsData =
+          await analyticsResponse.json();
+
         const exceptionsData =
           await exceptionsResponse.json();
+
         const reconciliationData =
           await reconciliationResponse.json();
 
         setHealth(healthData);
         setSummary(summaryData);
         setAnalytics(analyticsData);
+
         setExceptions(
           Array.isArray(exceptionsData)
             ? exceptionsData
@@ -92,13 +270,14 @@ function App() {
         console.error(err);
 
         setError(
-          "We couldn't reach the server. Please try again."
+          err.message ||
+            "We couldn't reach the server. Please try again."
         );
       }
     }
 
     loadData();
-  }, []);
+  }, [token, user]);
 
   // =========================
   // VIEW EXCEPTION DETAILS
@@ -110,9 +289,10 @@ function App() {
       setSelectedException(paymentId);
       setDetails(null);
 
-      const response = await fetch(
-        `${API_URL}/analyze/${paymentId}`
-      );
+      const response =
+        await authenticatedFetch(
+          `${API_URL}/analyze/${paymentId}`
+        );
 
       if (!response.ok) {
         throw new Error(
@@ -126,7 +306,10 @@ function App() {
     } catch (err) {
       console.error(err);
 
-      alert("Could not load payment details.");
+      alert(
+        err.message ||
+          "Could not load payment details."
+      );
 
       setSelectedException(null);
     } finally {
@@ -147,8 +330,8 @@ function App() {
   // FILTER EXCEPTIONS
   // =========================
 
-  const filteredExceptions = exceptions.filter(
-    (exception) => {
+  const filteredExceptions =
+    exceptions.filter((exception) => {
       const paymentId = String(
         exception.payment_id || ""
       ).toLowerCase();
@@ -161,9 +344,10 @@ function App() {
         exception.decision || ""
       ).toUpperCase();
 
-      const matchesSearch = paymentId.includes(
-        searchTerm.toLowerCase()
-      );
+      const matchesSearch =
+        paymentId.includes(
+          searchTerm.toLowerCase()
+        );
 
       const matchesRisk =
         riskFilter === "ALL" ||
@@ -178,8 +362,7 @@ function App() {
         matchesRisk &&
         matchesDecision
       );
-    }
-  );
+    });
 
   // =========================
   // FILTER RECONCILIATION
@@ -196,9 +379,10 @@ function App() {
           transaction.status || ""
         ).toUpperCase();
 
-        const matchesSearch = paymentId.includes(
-          reconSearch.toLowerCase()
-        );
+        const matchesSearch =
+          paymentId.includes(
+            reconSearch.toLowerCase()
+          );
 
         const matchesStatus =
           statusFilter === "ALL" ||
@@ -212,7 +396,7 @@ function App() {
     );
 
   // =========================
-  // RESET EXCEPTION FILTERS
+  // RESET FILTERS
   // =========================
 
   function resetFilters() {
@@ -221,13 +405,107 @@ function App() {
     setDecisionFilter("ALL");
   }
 
-  // =========================
-  // RESET RECONCILIATION FILTERS
-  // =========================
-
   function resetReconFilters() {
     setReconSearch("");
     setStatusFilter("ALL");
+  }
+
+  // =========================
+  // LOGIN SCREEN
+  // =========================
+
+  if (!token) {
+    return (
+      <div className="login-container">
+        <div className="login-box">
+
+          <h1>ReconAI</h1>
+
+          <p className="login-subtitle">
+            Payment Reconciliation System
+          </p>
+
+          <form onSubmit={handleLogin}>
+
+            <label>
+              Username
+            </label>
+
+            <input
+              type="text"
+              value={username}
+              onChange={(e) =>
+                setUsername(e.target.value)
+              }
+              placeholder="Enter username"
+              required
+            />
+
+            <label>
+              Password
+            </label>
+
+            <input
+              type="password"
+              value={password}
+              onChange={(e) =>
+                setPassword(e.target.value)
+              }
+              placeholder="Enter password"
+              required
+            />
+
+            {loginError && (
+              <div className="login-error">
+                {loginError}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className="login-button"
+              disabled={loginLoading}
+            >
+              {loginLoading
+                ? "Logging in..."
+                : "Login"}
+            </button>
+
+          </form>
+
+          <div className="demo-login">
+
+            <p>
+              <strong>Demo Admin</strong>
+            </p>
+
+            <p>
+              Username: admin
+            </p>
+
+            <p>
+              Password: admin123
+            </p>
+
+          </div>
+
+        </div>
+      </div>
+    );
+  }
+
+  // =========================
+  // WAIT FOR USER VERIFICATION
+  // =========================
+
+  if (!user) {
+    return (
+      <div className="loading-screen">
+        <div className="loading">
+          Authenticating...
+        </div>
+      </div>
+    );
   }
 
   // =========================
@@ -237,49 +515,95 @@ function App() {
   if (error) {
     return (
       <div className="error-container">
-        <div className="error-box">
-          <h2>Something went wrong</h2>
 
-          <p>{error}</p>
+        <div className="error-box">
+
+          <h2>
+            Something went wrong
+          </h2>
+
+          <p>
+            {error}
+          </p>
 
           <button
             className="reset-button"
-            onClick={() => window.location.reload()}
+            onClick={() =>
+              window.location.reload()
+            }
           >
             Retry
           </button>
+
+          <button
+            className="reset-button"
+            onClick={handleLogout}
+          >
+            Logout
+          </button>
+
         </div>
+
       </div>
     );
   }
 
+  // =========================
+  // DASHBOARD
+  // =========================
+
   return (
     <div className="dashboard">
 
-      {/* =========================
-          HEADER
-          ========================= */}
+      {/* HEADER */}
 
       <header className="header">
 
         <div>
-          <h1>ReconAI</h1>
+
+          <h1>
+            ReconAI
+          </h1>
 
           <p>
             Payment Reconciliation Dashboard
           </p>
+
         </div>
 
-        <div className="status">
+        <div className="header-right">
 
-          <span className="status-dot"></span>
+          <div className="user-info">
 
-          {health?.status || "Connecting..."}
+            <strong>
+              {user.username}
+            </strong>
+
+            <span>
+              {user.role}
+            </span>
+
+          </div>
+
+          <div className="status">
+
+            <span className="status-dot"></span>
+
+            {health?.status ||
+              "Connecting..."}
+
+          </div>
+
+          <button
+            className="logout-button"
+            onClick={handleLogout}
+          >
+            Logout
+          </button>
 
         </div>
 
       </header>
-
 
       <main>
 
@@ -289,7 +613,9 @@ function App() {
 
         <section>
 
-          <h2>Overview</h2>
+          <h2>
+            Overview
+          </h2>
 
           {!summary ? (
 
@@ -304,7 +630,6 @@ function App() {
               <div className="cards">
 
                 <div className="card">
-
                   <p>
                     Total Transactions
                   </p>
@@ -312,12 +637,9 @@ function App() {
                   <h3>
                     {summary.total_transactions}
                   </h3>
-
                 </div>
 
-
                 <div className="card">
-
                   <p>
                     Matched
                   </p>
@@ -325,12 +647,9 @@ function App() {
                   <h3>
                     {summary.matched}
                   </h3>
-
                 </div>
 
-
                 <div className="card">
-
                   <p>
                     Exceptions
                   </p>
@@ -338,12 +657,9 @@ function App() {
                   <h3>
                     {summary.exceptions}
                   </h3>
-
                 </div>
 
-
                 <div className="card">
-
                   <p>
                     Match Rate
                   </p>
@@ -351,11 +667,9 @@ function App() {
                   <h3>
                     {summary.match_rate}%
                   </h3>
-
                 </div>
 
               </div>
-
 
               <div className="summary">
 
@@ -368,7 +682,8 @@ function App() {
                   <div
                     className="progress"
                     style={{
-                      width: `${summary.match_rate}%`,
+                      width:
+                        `${summary.match_rate}%`,
                     }}
                   ></div>
 
@@ -388,14 +703,15 @@ function App() {
 
         </section>
 
-
         {/* =========================
             ANALYTICS
             ========================= */}
 
         <section className="analytics-section">
 
-          <h2>Analytics</h2>
+          <h2>
+            Analytics
+          </h2>
 
           {!analytics ? (
 
@@ -410,71 +726,41 @@ function App() {
               <div className="analytics-cards">
 
                 <div className="analytics-card">
-
-                  <span>
-                    Batch Size
-                  </span>
-
+                  <span>Batch Size</span>
                   <strong>
                     {analytics.batch_size}
                   </strong>
-
                 </div>
 
-
                 <div className="analytics-card">
-
-                  <span>
-                    Auto Resolved
-                  </span>
-
+                  <span>Auto Resolved</span>
                   <strong>
                     {analytics.auto_resolved}
                   </strong>
-
                 </div>
 
-
                 <div className="analytics-card">
-
-                  <span>
-                    Manual Review
-                  </span>
-
+                  <span>Manual Review</span>
                   <strong>
                     {analytics.manual_review}
                   </strong>
-
                 </div>
 
-
                 <div className="analytics-card">
-
-                  <span>
-                    Escalated
-                  </span>
-
+                  <span>Escalated</span>
                   <strong>
                     {analytics.escalated}
                   </strong>
-
                 </div>
 
-
                 <div className="analytics-card">
-
-                  <span>
-                    Unresolved
-                  </span>
-
+                  <span>Unresolved</span>
                   <strong>
                     {analytics.unresolved}
                   </strong>
-
                 </div>
 
               </div>
-
 
               <div className="analytics-panel">
 
@@ -482,153 +768,51 @@ function App() {
                   Exception Breakdown
                 </h2>
 
+                {[
+                  ["Auto Resolved", analytics.auto_resolved, "auto"],
+                  ["Manual Review", analytics.manual_review, "manual"],
+                  ["Escalated", analytics.escalated, "escalated"],
+                  ["Unresolved", analytics.unresolved, "unresolved"],
+                ].map(([label, value, className]) => (
 
-                {/* Auto Resolved */}
+                  <div
+                    className="bar-row"
+                    key={label}
+                  >
 
-                <div className="bar-row">
+                    <div className="bar-label">
 
-                  <div className="bar-label">
+                      <span>
+                        {label}
+                      </span>
 
-                    <span>
-                      Auto Resolved
-                    </span>
+                      <strong>
+                        {value}
+                      </strong>
 
-                    <strong>
-                      {analytics.auto_resolved}
-                    </strong>
+                    </div>
 
-                  </div>
+                    <div className="bar-container">
 
-                  <div className="bar-container">
+                      <div
+                        className={`bar ${className}`}
+                        style={{
+                          width: `${
+                            analytics.exceptions
+                              ? (
+                                  value /
+                                  analytics.exceptions
+                                ) * 100
+                              : 0
+                          }%`,
+                        }}
+                      ></div>
 
-                    <div
-                      className="bar auto"
-                      style={{
-                        width: `${
-                          analytics.exceptions
-                            ? (
-                                analytics.auto_resolved /
-                                analytics.exceptions
-                              ) * 100
-                            : 0
-                        }%`,
-                      }}
-                    ></div>
-
-                  </div>
-
-                </div>
-
-
-                {/* Manual Review */}
-
-                <div className="bar-row">
-
-                  <div className="bar-label">
-
-                    <span>
-                      Manual Review
-                    </span>
-
-                    <strong>
-                      {analytics.manual_review}
-                    </strong>
+                    </div>
 
                   </div>
 
-                  <div className="bar-container">
-
-                    <div
-                      className="bar manual"
-                      style={{
-                        width: `${
-                          analytics.exceptions
-                            ? (
-                                analytics.manual_review /
-                                analytics.exceptions
-                              ) * 100
-                            : 0
-                        }%`,
-                      }}
-                    ></div>
-
-                  </div>
-
-                </div>
-
-
-                {/* Escalated */}
-
-                <div className="bar-row">
-
-                  <div className="bar-label">
-
-                    <span>
-                      Escalated
-                    </span>
-
-                    <strong>
-                      {analytics.escalated}
-                    </strong>
-
-                  </div>
-
-                  <div className="bar-container">
-
-                    <div
-                      className="bar escalated"
-                      style={{
-                        width: `${
-                          analytics.exceptions
-                            ? (
-                                analytics.escalated /
-                                analytics.exceptions
-                              ) * 100
-                            : 0
-                        }%`,
-                      }}
-                    ></div>
-
-                  </div>
-
-                </div>
-
-
-                {/* Unresolved */}
-
-                <div className="bar-row">
-
-                  <div className="bar-label">
-
-                    <span>
-                      Unresolved
-                    </span>
-
-                    <strong>
-                      {analytics.unresolved}
-                    </strong>
-
-                  </div>
-
-                  <div className="bar-container">
-
-                    <div
-                      className="bar unresolved"
-                      style={{
-                        width: `${
-                          analytics.exceptions
-                            ? (
-                                analytics.unresolved /
-                                analytics.exceptions
-                              ) * 100
-                            : 0
-                        }%`,
-                      }}
-                    ></div>
-
-                  </div>
-
-                </div>
+                ))}
 
               </div>
 
@@ -637,7 +821,6 @@ function App() {
           )}
 
         </section>
-
 
         {/* =========================
             REPORTS
@@ -660,13 +843,11 @@ function App() {
             </div>
 
             <div className="exception-count">
-
-              {summary?.total_transactions || 0} Transactions
-
+              {summary?.total_transactions || 0}
+              {" "}Transactions
             </div>
 
           </div>
-
 
           {!summary ? (
 
@@ -678,12 +859,9 @@ function App() {
 
             <>
 
-              {/* Report Cards */}
-
               <div className="analytics-cards">
 
                 <div className="analytics-card">
-
                   <span>
                     Total Transactions
                   </span>
@@ -691,12 +869,9 @@ function App() {
                   <strong>
                     {summary.total_transactions}
                   </strong>
-
                 </div>
 
-
                 <div className="analytics-card">
-
                   <span>
                     Successfully Matched
                   </span>
@@ -704,12 +879,9 @@ function App() {
                   <strong>
                     {summary.matched}
                   </strong>
-
                 </div>
 
-
                 <div className="analytics-card">
-
                   <span>
                     Exceptions
                   </span>
@@ -717,12 +889,9 @@ function App() {
                   <strong>
                     {summary.exceptions}
                   </strong>
-
                 </div>
 
-
                 <div className="analytics-card">
-
                   <span>
                     Match Rate
                   </span>
@@ -730,13 +899,9 @@ function App() {
                   <strong>
                     {summary.match_rate}%
                   </strong>
-
                 </div>
 
               </div>
-
-
-              {/* Reconciliation Performance */}
 
               <div className="analytics-panel">
 
@@ -744,13 +909,9 @@ function App() {
                   Reconciliation Performance
                 </h2>
 
-
-                {/* Matched Transactions */}
-
                 <div className="bar-row">
 
                   <div className="bar-label">
-
                     <span>
                       Matched Transactions
                     </span>
@@ -758,9 +919,7 @@ function App() {
                     <strong>
                       {summary.matched}
                     </strong>
-
                   </div>
-
 
                   <div className="bar-container">
 
@@ -782,13 +941,9 @@ function App() {
 
                 </div>
 
-
-                {/* Exception Transactions */}
-
                 <div className="bar-row">
 
                   <div className="bar-label">
-
                     <span>
                       Exception Transactions
                     </span>
@@ -796,9 +951,7 @@ function App() {
                     <strong>
                       {summary.exceptions}
                     </strong>
-
                   </div>
-
 
                   <div className="bar-container">
 
@@ -820,32 +973,22 @@ function App() {
 
                 </div>
 
-
-                {/* Report Summary */}
-
                 <div className="report-summary-text">
 
                   <p>
-
                     <strong>
                       {summary.match_rate}%
                     </strong>{" "}
-
                     of transactions were
                     successfully reconciled.
-
                   </p>
 
-
                   <p>
-
                     <strong>
                       {summary.exceptions}
                     </strong>{" "}
-
                     transactions require further
                     investigation.
-
                   </p>
 
                 </div>
@@ -857,7 +1000,6 @@ function App() {
           )}
 
         </section>
-
 
         {/* =========================
             RECONCILIATION
@@ -880,15 +1022,11 @@ function App() {
             </div>
 
             <div className="exception-count">
-
-              {reconciliation.length} Transactions
-
+              {reconciliation.length}
+              {" "}Transactions
             </div>
 
           </div>
-
-
-          {/* Reconciliation Filters */}
 
           <div className="exception-filters">
 
@@ -900,7 +1038,6 @@ function App() {
                 setReconSearch(e.target.value)
               }
             />
-
 
             <select
               value={statusFilter}
@@ -923,7 +1060,6 @@ function App() {
 
             </select>
 
-
             <button
               className="reset-button"
               onClick={resetReconFilters}
@@ -932,7 +1068,6 @@ function App() {
             </button>
 
           </div>
-
 
           <p className="filter-result">
 
@@ -947,11 +1082,9 @@ function App() {
             <strong>
               {reconciliation.length}
             </strong>{" "}
-
             transactions
 
           </p>
-
 
           {!reconciliation.length ? (
 
@@ -974,43 +1107,17 @@ function App() {
                 <thead>
 
                   <tr>
-
-                    <th>
-                      Payment ID
-                    </th>
-
-                    <th>
-                      Status
-                    </th>
-
-                    <th>
-                      Reason
-                    </th>
-
-                    <th>
-                      Expected Amount
-                    </th>
-
-                    <th>
-                      Settled Amount
-                    </th>
-
-                    <th>
-                      Difference
-                    </th>
-
-                    <th>
-                      Date Difference
-                    </th>
-
-                    <th>
-                      Confidence
-                    </th>
-
+                    <th>Payment ID</th>
+                    <th>Status</th>
+                    <th>Reason</th>
+                    <th>Expected Amount</th>
+                    <th>Settled Amount</th>
+                    <th>Difference</th>
+                    <th>Date Difference</th>
+                    <th>Confidence</th>
                   </tr>
 
                 </thead>
-
 
                 <tbody>
 
@@ -1025,7 +1132,6 @@ function App() {
                           {transaction.payment_id}
                         </td>
 
-
                         <td>
 
                           <span
@@ -1036,67 +1142,50 @@ function App() {
                                 : "high"
                             }`}
                           >
-
                             {transaction.status}
-
                           </span>
 
                         </td>
-
 
                         <td>
                           {transaction.reason || "—"}
                         </td>
 
-
                         <td>
-
                           {transaction.expected_amount !==
                           undefined
                             ? `₹${transaction.expected_amount}`
                             : "—"}
-
                         </td>
 
-
                         <td>
-
                           {transaction.settled_amount !==
                             null &&
                           transaction.settled_amount !==
                             undefined
                             ? `₹${transaction.settled_amount}`
                             : "—"}
-
                         </td>
 
-
                         <td>
-
                           {transaction.difference !==
                             undefined &&
                           transaction.difference !==
                             null
                             ? `₹${transaction.difference}`
                             : "—"}
-
                         </td>
 
-
                         <td>
-
                           {transaction.date_difference_days !==
                             undefined &&
                           transaction.date_difference_days !==
                             null
                             ? `${transaction.date_difference_days} days`
                             : "—"}
-
                         </td>
 
-
                         <td>
-
                           {transaction.confidence !==
                             undefined &&
                           transaction.confidence !==
@@ -1106,7 +1195,6 @@ function App() {
                                 100
                               ).toFixed(0)}%`
                             : "—"}
-
                         </td>
 
                       </tr>
@@ -1123,7 +1211,6 @@ function App() {
           )}
 
         </section>
-
 
         {/* =========================
             EXCEPTIONS
@@ -1146,15 +1233,10 @@ function App() {
             </div>
 
             <div className="exception-count">
-
               {exceptions.length} Exceptions
-
             </div>
 
           </div>
-
-
-          {/* Exception Filters */}
 
           <div className="exception-filters">
 
@@ -1166,7 +1248,6 @@ function App() {
                 setSearchTerm(e.target.value)
               }
             />
-
 
             <select
               value={riskFilter}
@@ -1193,7 +1274,6 @@ function App() {
 
             </select>
 
-
             <select
               value={decisionFilter}
               onChange={(e) =>
@@ -1219,7 +1299,6 @@ function App() {
 
             </select>
 
-
             <button
               className="reset-button"
               onClick={resetFilters}
@@ -1229,25 +1308,19 @@ function App() {
 
           </div>
 
-
           <p className="filter-result">
 
             Showing{" "}
-
             <strong>
               {filteredExceptions.length}
             </strong>{" "}
-
             of{" "}
-
             <strong>
               {exceptions.length}
             </strong>{" "}
-
             exceptions
 
           </p>
-
 
           {!exceptions.length ? (
 
@@ -1270,47 +1343,18 @@ function App() {
                 <thead>
 
                   <tr>
-
-                    <th>
-                      Payment ID
-                    </th>
-
-                    <th>
-                      Reason
-                    </th>
-
-                    <th>
-                      Expected Amount
-                    </th>
-
-                    <th>
-                      Settled Amount
-                    </th>
-
-                    <th>
-                      Risk
-                    </th>
-
-                    <th>
-                      AI Confidence
-                    </th>
-
-                    <th>
-                      Decision
-                    </th>
-
-                    <th>
-                      Recommended Action
-                    </th>
-
-                    <th>
-                      Investigation
-                    </th>
-
+                    <th>Payment ID</th>
+                    <th>Reason</th>
+                    <th>Expected Amount</th>
+                    <th>Settled Amount</th>
+                    <th>Risk</th>
+                    <th>AI Confidence</th>
+                    <th>Decision</th>
+                    <th>Recommended Action</th>
+                    <th>Investigation</th>
                   </tr>
 
                 </thead>
-
 
                 <tbody>
 
@@ -1325,28 +1369,22 @@ function App() {
                           {exception.payment_id}
                         </td>
 
-
                         <td>
                           {exception.reason}
                         </td>
-
 
                         <td>
                           ₹{exception.expected_amount}
                         </td>
 
-
                         <td>
-
                           {exception.settled_amount !==
                             null &&
                           exception.settled_amount !==
                             undefined
                             ? `₹${exception.settled_amount}`
                             : "—"}
-
                         </td>
-
 
                         <td>
 
@@ -1355,17 +1393,13 @@ function App() {
                               exception.risk_level || ""
                             ).toLowerCase()}`}
                           >
-
                             {exception.risk_level ||
                               "N/A"}
-
                           </span>
 
                         </td>
 
-
                         <td>
-
                           {exception.ai_confidence !==
                             null &&
                           exception.ai_confidence !==
@@ -1375,29 +1409,21 @@ function App() {
                                 100
                               ).toFixed(0)}%`
                             : "—"}
-
                         </td>
-
 
                         <td>
 
                           <span className="decision-badge">
-
                             {exception.decision ||
                               "N/A"}
-
                           </span>
 
                         </td>
 
-
                         <td>
-
                           {exception.recommended_action ||
                             "—"}
-
                         </td>
-
 
                         <td>
 
@@ -1429,9 +1455,8 @@ function App() {
 
         </section>
 
-
         {/* =========================
-            EXCEPTION INVESTIGATION
+            INVESTIGATION
             ========================= */}
 
         {detailsLoading && (
@@ -1446,12 +1471,9 @@ function App() {
 
         )}
 
-
         {details && !detailsLoading && (
 
           <section className="details-panel">
-
-            {/* Header */}
 
             <div className="details-header">
 
@@ -1462,17 +1484,13 @@ function App() {
                 </h2>
 
                 <p>
-
                   Payment ID:{" "}
-
                   <strong>
                     {selectedException}
                   </strong>
-
                 </p>
 
               </div>
-
 
               <button
                 className="close-button"
@@ -1483,37 +1501,24 @@ function App() {
 
             </div>
 
-
-            {/* Summary Cards */}
-
             <div className="details-grid">
 
               <div className="detail-card">
-
-                <span>
-                  Status
-                </span>
+                <span>Status</span>
 
                 <strong>
                   {details.status || "N/A"}
                 </strong>
-
               </div>
 
-
               <div className="detail-card">
-
-                <span>
-                  Risk Level
-                </span>
+                <span>Risk Level</span>
 
                 <strong>
                   {details.ai_analysis
                     ?.risk_level || "N/A"}
                 </strong>
-
               </div>
-
 
               <div className="detail-card">
 
@@ -1537,7 +1542,6 @@ function App() {
 
               </div>
 
-
               <div className="detail-card">
 
                 <span>
@@ -1553,9 +1557,6 @@ function App() {
 
             </div>
 
-
-            {/* Reconciliation Details */}
-
             <div className="analysis-box">
 
               <h3>
@@ -1563,88 +1564,65 @@ function App() {
               </h3>
 
               <p>
-
                 <strong>
                   Reason:
                 </strong>{" "}
-
                 {details.reconciliation
                   ?.reason || "N/A"}
-
               </p>
 
-
               <p>
-
                 <strong>
                   Expected Amount:
                 </strong>{" "}
-
                 {details.reconciliation
                   ?.expected_amount !== undefined
                   ? `₹${details.reconciliation.expected_amount}`
                   : "N/A"}
-
               </p>
 
-
               <p>
-
                 <strong>
                   Settled Amount:
                 </strong>{" "}
-
                 {details.reconciliation
                   ?.settled_amount !== null &&
                 details.reconciliation
                   ?.settled_amount !== undefined
                   ? `₹${details.reconciliation.settled_amount}`
                   : "Not settled"}
-
               </p>
-
 
               {details.reconciliation
                 ?.difference !== undefined && (
 
                 <p>
-
                   <strong>
                     Difference:
                   </strong>{" "}
-
-                  ₹
-                  {details.reconciliation.difference}
-
+                  ₹{details.reconciliation.difference}
                 </p>
 
               )}
-
 
               {details.reconciliation
                 ?.date_difference_days !==
                 undefined && (
 
                 <p>
-
                   <strong>
                     Date Difference:
                   </strong>{" "}
-
                   {
                     details.reconciliation
                       .date_difference_days
                   }{" "}
                   days
-
                 </p>
 
               )}
 
             </div>
-
-
-            {/* AI Analysis */}
 
             <div className="analysis-box">
 
@@ -1652,25 +1630,18 @@ function App() {
                 AI Analysis
               </h3>
 
-
               <p>
-
                 <strong>
                   Risk Level:
                 </strong>{" "}
-
                 {details.ai_analysis
                   ?.risk_level || "N/A"}
-
               </p>
 
-
               <p>
-
                 <strong>
                   AI Confidence:
                 </strong>{" "}
-
                 {details.ai_analysis
                   ?.confidence !== null &&
                 details.ai_analysis
@@ -1680,26 +1651,18 @@ function App() {
                       100
                     ).toFixed(1)}%`
                   : "N/A"}
-
               </p>
 
-
               <p>
-
                 <strong>
                   Recommended Action:
                 </strong>{" "}
-
                 {details.ai_analysis
                   ?.recommended_action ||
                   "N/A"}
-
               </p>
 
             </div>
-
-
-            {/* Decision */}
 
             <div className="analysis-box">
 
@@ -1707,35 +1670,24 @@ function App() {
                 Decision
               </h3>
 
-
               <p>
-
                 <strong>
                   Decision:
                 </strong>{" "}
-
                 {details.decision
                   ?.decision || "N/A"}
-
               </p>
 
-
               <p>
-
                 <strong>
                   Reason:
                 </strong>{" "}
-
                 {details.decision
                   ?.reason ||
                   "No decision reason available."}
-
               </p>
 
             </div>
-
-
-            {/* Audit */}
 
             {details.audit && (
 
