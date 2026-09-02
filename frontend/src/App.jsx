@@ -7,6 +7,7 @@ function App() {
   const [summary, setSummary] = useState(null);
   const [analytics, setAnalytics] = useState(null);
   const [exceptions, setExceptions] = useState([]);
+  const [reconciliation, setReconciliation] = useState([]);
   const [health, setHealth] = useState(null);
   const [error, setError] = useState("");
 
@@ -20,6 +21,10 @@ function App() {
   const [riskFilter, setRiskFilter] = useState("ALL");
   const [decisionFilter, setDecisionFilter] = useState("ALL");
 
+  // Reconciliation filters
+  const [reconSearch, setReconSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+
   // =========================
   // LOAD DASHBOARD DATA
   // =========================
@@ -32,18 +37,21 @@ function App() {
           summaryResponse,
           analyticsResponse,
           exceptionsResponse,
+          reconciliationResponse,
         ] = await Promise.all([
           fetch(`${API_URL}/health`),
           fetch(`${API_URL}/summary`),
           fetch(`${API_URL}/analytics`),
           fetch(`${API_URL}/exceptions`),
+          fetch(`${API_URL}/reconcile`),
         ]);
 
         if (
           !healthResponse.ok ||
           !summaryResponse.ok ||
           !analyticsResponse.ok ||
-          !exceptionsResponse.ok
+          !exceptionsResponse.ok ||
+          !reconciliationResponse.ok
         ) {
           throw new Error("Could not reach the backend");
         }
@@ -52,13 +60,19 @@ function App() {
         const summaryData = await summaryResponse.json();
         const analyticsData = await analyticsResponse.json();
         const exceptionsData = await exceptionsResponse.json();
+        const reconciliationData =
+          await reconciliationResponse.json();
 
         setHealth(healthData);
         setSummary(summaryData);
         setAnalytics(analyticsData);
         setExceptions(exceptionsData);
+        setReconciliation(
+          reconciliationData.results || []
+        );
       } catch (err) {
         console.error(err);
+
         setError(
           "We couldn't reach the server. Please try again."
         );
@@ -150,13 +164,49 @@ function App() {
   );
 
   // =========================
-  // RESET FILTERS
+  // FILTER RECONCILIATION
+  // =========================
+
+  const filteredReconciliation =
+    reconciliation.filter(
+      (transaction) => {
+        const paymentId = String(
+          transaction.payment_id || ""
+        ).toLowerCase();
+
+        const status = String(
+          transaction.status || ""
+        ).toUpperCase();
+
+        const matchesSearch = paymentId.includes(
+          reconSearch.toLowerCase()
+        );
+
+        const matchesStatus =
+          statusFilter === "ALL" ||
+          status === statusFilter;
+
+        return matchesSearch && matchesStatus;
+      }
+    );
+
+  // =========================
+  // RESET EXCEPTION FILTERS
   // =========================
 
   function resetFilters() {
     setSearchTerm("");
     setRiskFilter("ALL");
     setDecisionFilter("ALL");
+  }
+
+  // =========================
+  // RESET RECONCILIATION FILTERS
+  // =========================
+
+  function resetReconFilters() {
+    setReconSearch("");
+    setStatusFilter("ALL");
   }
 
   // =========================
@@ -185,15 +235,18 @@ function App() {
 
         <div>
           <h1>ReconAI</h1>
+
           <p>
             Payment Reconciliation Dashboard
           </p>
         </div>
 
         <div className="status">
+
           <span className="status-dot"></span>
 
           {health?.status || "Connecting..."}
+
         </div>
 
       </header>
@@ -223,27 +276,34 @@ function App() {
 
                 <div className="card">
                   <p>Total Transactions</p>
+
                   <h3>
                     {summary.total_transactions}
                   </h3>
                 </div>
 
+
                 <div className="card">
                   <p>Matched</p>
+
                   <h3>
                     {summary.matched}
                   </h3>
                 </div>
 
+
                 <div className="card">
                   <p>Exceptions</p>
+
                   <h3>
                     {summary.exceptions}
                   </h3>
                 </div>
 
+
                 <div className="card">
                   <p>Match Rate</p>
+
                   <h3>
                     {summary.match_rate}%
                   </h3>
@@ -306,34 +366,43 @@ function App() {
 
                 <div className="analytics-card">
                   <span>Batch Size</span>
+
                   <strong>
                     {analytics.batch_size}
                   </strong>
                 </div>
 
+
                 <div className="analytics-card">
                   <span>Auto Resolved</span>
+
                   <strong>
                     {analytics.auto_resolved}
                   </strong>
                 </div>
 
+
                 <div className="analytics-card">
                   <span>Manual Review</span>
+
                   <strong>
                     {analytics.manual_review}
                   </strong>
                 </div>
 
+
                 <div className="analytics-card">
                   <span>Escalated</span>
+
                   <strong>
                     {analytics.escalated}
                   </strong>
                 </div>
 
+
                 <div className="analytics-card">
                   <span>Unresolved</span>
+
                   <strong>
                     {analytics.unresolved}
                   </strong>
@@ -502,6 +571,268 @@ function App() {
 
 
         {/* =========================
+            RECONCILIATION
+            ========================= */}
+
+        <section className="reconciliation-section">
+
+          <div className="section-heading">
+
+            <div>
+
+              <h2>
+                Reconciliation
+              </h2>
+
+              <p>
+                Complete transaction reconciliation results
+              </p>
+
+            </div>
+
+            <div className="exception-count">
+
+              {reconciliation.length} Transactions
+
+            </div>
+
+          </div>
+
+
+          {/* Reconciliation Filters */}
+
+          <div className="exception-filters">
+
+            <input
+              type="text"
+              placeholder="Search Payment ID..."
+              value={reconSearch}
+              onChange={(e) =>
+                setReconSearch(e.target.value)
+              }
+            />
+
+
+            <select
+              value={statusFilter}
+              onChange={(e) =>
+                setStatusFilter(e.target.value)
+              }
+            >
+
+              <option value="ALL">
+                All Status
+              </option>
+
+              <option value="MATCHED">
+                Matched
+              </option>
+
+              <option value="EXCEPTION">
+                Exception
+              </option>
+
+            </select>
+
+
+            <button
+              className="reset-button"
+              onClick={resetReconFilters}
+            >
+              Reset
+            </button>
+
+          </div>
+
+
+          <p className="filter-result">
+
+            Showing{" "}
+            <strong>
+              {filteredReconciliation.length}
+            </strong>{" "}
+            of{" "}
+            <strong>
+              {reconciliation.length}
+            </strong>{" "}
+            transactions
+
+          </p>
+
+
+          {!reconciliation.length ? (
+
+            <div className="loading">
+              Loading reconciliation results...
+            </div>
+
+          ) : filteredReconciliation.length === 0 ? (
+
+            <div className="loading">
+              No transactions match your filters.
+            </div>
+
+          ) : (
+
+            <div className="table-container">
+
+              <table className="exceptions-table">
+
+                <thead>
+
+                  <tr>
+
+                    <th>
+                      Payment ID
+                    </th>
+
+                    <th>
+                      Status
+                    </th>
+
+                    <th>
+                      Reason
+                    </th>
+
+                    <th>
+                      Expected Amount
+                    </th>
+
+                    <th>
+                      Settled Amount
+                    </th>
+
+                    <th>
+                      Difference
+                    </th>
+
+                    <th>
+                      Date Difference
+                    </th>
+
+                    <th>
+                      Confidence
+                    </th>
+
+                  </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                  {filteredReconciliation.map(
+                    (transaction, index) => (
+
+                      <tr
+                        key={`${transaction.payment_id}-${index}`}
+                      >
+
+                        <td className="payment-id">
+                          {transaction.payment_id}
+                        </td>
+
+
+                        <td>
+
+                          <span
+                            className={`risk-badge ${
+                              transaction.status ===
+                              "MATCHED"
+                                ? "low"
+                                : "high"
+                            }`}
+                          >
+
+                            {transaction.status}
+
+                          </span>
+
+                        </td>
+
+
+                        <td>
+                          {transaction.reason || "—"}
+                        </td>
+
+
+                        <td>
+
+                          {transaction.expected_amount !==
+                          undefined
+                            ? `₹${transaction.expected_amount}`
+                            : "—"}
+
+                        </td>
+
+
+                        <td>
+
+                          {transaction.settled_amount !==
+                            null &&
+                          transaction.settled_amount !==
+                            undefined
+                            ? `₹${transaction.settled_amount}`
+                            : "—"}
+
+                        </td>
+
+
+                        <td>
+
+                          {transaction.difference !==
+                            undefined &&
+                          transaction.difference !==
+                            null
+                            ? `₹${transaction.difference}`
+                            : "—"}
+
+                        </td>
+
+
+                        <td>
+
+                          {transaction.date_difference_days !==
+                            undefined &&
+                          transaction.date_difference_days !==
+                            null
+                            ? `${transaction.date_difference_days} days`
+                            : "—"}
+
+                        </td>
+
+
+                        <td>
+
+                          {transaction.confidence !==
+                            undefined &&
+                          transaction.confidence !==
+                            null
+                            ? `${(
+                                transaction.confidence *
+                                100
+                              ).toFixed(0)}%`
+                            : "—"}
+
+                        </td>
+
+                      </tr>
+
+                    )
+                  )}
+
+                </tbody>
+
+              </table>
+
+            </div>
+
+          )}
+
+        </section>
+
+
+        {/* =========================
             EXCEPTIONS
             ========================= */}
 
@@ -522,15 +853,15 @@ function App() {
             </div>
 
             <div className="exception-count">
+
               {exceptions.length} Exceptions
+
             </div>
 
           </div>
 
 
-          {/* =========================
-              FILTERS
-              ========================= */}
+          {/* Exception Filters */}
 
           <div className="exception-filters">
 
@@ -620,10 +951,6 @@ function App() {
 
           </p>
 
-
-          {/* =========================
-              EXCEPTION TABLE
-              ========================= */}
 
           {!exceptions.length ? (
 
@@ -731,8 +1058,10 @@ function App() {
                               exception.risk_level || ""
                             ).toLowerCase()}`}
                           >
+
                             {exception.risk_level ||
                               "N/A"}
+
                           </span>
 
                         </td>
@@ -756,16 +1085,20 @@ function App() {
                         <td>
 
                           <span className="decision-badge">
+
                             {exception.decision ||
                               "N/A"}
+
                           </span>
 
                         </td>
 
 
                         <td>
+
                           {exception.recommended_action ||
                             "—"}
+
                         </td>
 
 
@@ -832,10 +1165,13 @@ function App() {
                 </h2>
 
                 <p>
+
                   Payment ID:{" "}
+
                   <strong>
                     {selectedException}
                   </strong>
+
                 </p>
 
               </div>
@@ -921,7 +1257,7 @@ function App() {
             </div>
 
 
-            {/* Reconciliation */}
+            {/* Reconciliation Details */}
 
             <div className="analysis-box">
 
@@ -930,24 +1266,33 @@ function App() {
               </h3>
 
               <p>
+
                 <strong>
                   Reason:
                 </strong>{" "}
+
                 {details.reconciliation
                   ?.reason || "N/A"}
+
               </p>
 
+
               <p>
+
                 <strong>
                   Expected Amount:
                 </strong>{" "}
+
                 {details.reconciliation
                   ?.expected_amount !== undefined
                   ? `₹${details.reconciliation.expected_amount}`
                   : "N/A"}
+
               </p>
 
+
               <p>
+
                 <strong>
                   Settled Amount:
                 </strong>{" "}
@@ -1010,6 +1355,7 @@ function App() {
                 AI Analysis
               </h3>
 
+
               <p>
 
                 <strong>
@@ -1063,6 +1409,7 @@ function App() {
               <h3>
                 Decision
               </h3>
+
 
               <p>
 
