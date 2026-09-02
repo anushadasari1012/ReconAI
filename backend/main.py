@@ -3,10 +3,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from pydantic import BaseModel
-import hashlib
-import secrets
+
 import jwt
+import bcrypt
+
 from datetime import datetime, timedelta, timezone
+
+from sqlalchemy.orm import Session
+
+from database import User, get_db, SessionLocal
 
 from reconciliation import reconcile
 from agent import analyze_exception
@@ -43,57 +48,17 @@ app.add_middleware(
 # =========================================================
 
 SECRET_KEY = "RECONAI_SECRET_KEY_CHANGE_THIS"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
+ALGORITHM = "HS256"
+
+ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
 security = HTTPBearer()
 
 
 # =========================================================
-# DEMO USERS
-# =========================================================
-#
-# Admin:
-# username: admin
-# password: admin123
-#
-# Employee:
-# username: employee
-# password: employee123
-#
-# This is a temporary in-memory authentication system.
-# Later we can connect it to a database.
-# =========================================================
-
-
-def hash_password(password: str) -> str:
-    return hashlib.sha256(
-        password.encode("utf-8")
-    ).hexdigest()
-
-
-USERS = {
-    "admin": {
-        "username": "admin",
-        "password": hash_password("admin123"),
-        "role": "ADMIN",
-        "name": "ReconAI Administrator"
-    },
-
-    "employee": {
-        "username": "employee",
-        "password": hash_password("employee123"),
-        "role": "EMPLOYEE",
-        "name": "ReconAI Employee"
-    }
-}
-
-
-# =========================================================
 # REQUEST MODELS
 # =========================================================
-
 
 class LoginRequest(BaseModel):
     username: str
@@ -101,18 +66,102 @@ class LoginRequest(BaseModel):
 
 
 # =========================================================
-# CREATE JWT TOKEN
+# CREATE DEFAULT USERS
 # =========================================================
 
+def create_default_users():
+
+    db = SessionLocal()
+
+    try:
+
+        # -------------------------------------------------
+        # ADMIN USER
+        # -------------------------------------------------
+
+        admin = (
+            db.query(User)
+            .filter(User.username == "admin")
+            .first()
+        )
+
+        if not admin:
+
+            admin = User(
+                username="admin",
+                password=bcrypt.hashpw(
+                    "admin123".encode("utf-8"),
+                    bcrypt.gensalt()
+                ).decode("utf-8"),
+                role="ADMIN",
+                name="ReconAI Administrator"
+            )
+
+            db.add(admin)
+
+        # -------------------------------------------------
+        # EMPLOYEE USER
+        # -------------------------------------------------
+
+        employee = (
+            db.query(User)
+            .filter(User.username == "employee")
+            .first()
+        )
+
+        if not employee:
+
+            employee = User(
+                username="employee",
+                password=bcrypt.hashpw(
+                    "employee123".encode("utf-8"),
+                    bcrypt.gensalt()
+                ).decode("utf-8"),
+                role="EMPLOYEE",
+                name="ReconAI Employee"
+            )
+
+            db.add(employee)
+
+        db.commit()
+
+        print("Default users verified successfully.")
+
+    except Exception as e:
+
+        db.rollback()
+
+        print("Error creating default users:", e)
+
+    finally:
+
+        db.close()
+
+
+# =========================================================
+# STARTUP
+# =========================================================
+
+@app.on_event("startup")
+def startup_event():
+
+    create_default_users()
+
+
+# =========================================================
+# CREATE JWT TOKEN
+# =========================================================
 
 def create_access_token(
     username: str,
     role: str
 ):
-    expire = datetime.now(
-        timezone.utc
-    ) + timedelta(
-        minutes=ACCESS_TOKEN_EXPIRE_MINUTES
+
+    expire = (
+        datetime.now(timezone.utc)
+        + timedelta(
+            minutes=ACCESS_TOKEN_EXPIRE_MINUTES
+        )
     )
 
     payload = {
@@ -134,15 +183,21 @@ def create_access_token(
 # GET CURRENT USER
 # =========================================================
 
-
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(
         security
-    )
+    ),
+    db: Session = Depends(get_db)
 ):
+
     token = credentials.credentials
 
     try:
+
+        # -------------------------------------------------
+        # Decode JWT
+        # -------------------------------------------------
+
         payload = jwt.decode(
             token,
             SECRET_KEY,
@@ -150,26 +205,37 @@ def get_current_user(
         )
 
         username = payload.get("sub")
-        role = payload.get("role")
 
-        if not username or not role:
+        if not username:
+
             raise HTTPException(
                 status_code=401,
                 detail="Invalid authentication token"
             )
 
-        user = USERS.get(username)
+        # -------------------------------------------------
+        # Find user in database
+        # -------------------------------------------------
+
+        user = (
+            db.query(User)
+            .filter(
+                User.username == username
+            )
+            .first()
+        )
 
         if not user:
+
             raise HTTPException(
                 status_code=401,
                 detail="User not found"
             )
 
         return {
-            "username": username,
-            "role": role,
-            "name": user["name"]
+            "username": user.username,
+            "role": user.role,
+            "name": user.name
         }
 
     except jwt.ExpiredSignatureError:
@@ -191,7 +257,6 @@ def get_current_user(
 # ADMIN-ONLY CHECK
 # =========================================================
 
-
 def require_admin(
     current_user=Depends(get_current_user)
 ):
@@ -210,7 +275,6 @@ def require_admin(
 # ROOT
 # =========================================================
 
-
 @app.get("/")
 def root():
 
@@ -224,7 +288,6 @@ def root():
 # HEALTH
 # =========================================================
 
-
 @app.get("/health")
 def health():
 
@@ -237,14 +300,27 @@ def health():
 # LOGIN
 # =========================================================
 
-
 @app.post("/login")
-def login(login_data: LoginRequest):
+def login(
+    login_data: LoginRequest,
+    db: Session = Depends(get_db)
+):
 
     username = login_data.username
+
     password = login_data.password
 
-    user = USERS.get(username)
+    # -----------------------------------------------------
+    # Find user
+    # -----------------------------------------------------
+
+    user = (
+        db.query(User)
+        .filter(
+            User.username == username
+        )
+        .first()
+    )
 
     if not user:
 
@@ -253,28 +329,48 @@ def login(login_data: LoginRequest):
             detail="Invalid username or password"
         )
 
-    password_hash = hash_password(password)
+    # -----------------------------------------------------
+    # Verify bcrypt password
+    # -----------------------------------------------------
 
-    if password_hash != user["password"]:
+    try:
+
+        password_valid = bcrypt.checkpw(
+            password.encode("utf-8"),
+            user.password.encode("utf-8")
+        )
+
+    except Exception:
+
+        password_valid = False
+
+    if not password_valid:
 
         raise HTTPException(
             status_code=401,
             detail="Invalid username or password"
         )
 
+    # -----------------------------------------------------
+    # Create JWT
+    # -----------------------------------------------------
+
     token = create_access_token(
-        username,
-        user["role"]
+        user.username,
+        user.role
     )
 
     return {
         "message": "Login successful",
+
         "access_token": token,
+
         "token_type": "bearer",
+
         "user": {
-            "username": user["username"],
-            "name": user["name"],
-            "role": user["role"]
+            "username": user.username,
+            "name": user.name,
+            "role": user.role
         }
     }
 
@@ -283,10 +379,11 @@ def login(login_data: LoginRequest):
 # CURRENT USER
 # =========================================================
 
-
 @app.get("/me")
 def get_me(
-    current_user=Depends(get_current_user)
+    current_user=Depends(
+        get_current_user
+    )
 ):
 
     return {
@@ -299,10 +396,11 @@ def get_me(
 # ADMIN TEST ENDPOINT
 # =========================================================
 
-
 @app.get("/admin")
 def admin_dashboard(
-    current_user=Depends(require_admin)
+    current_user=Depends(
+        require_admin
+    )
 ):
 
     return {
@@ -315,10 +413,11 @@ def admin_dashboard(
 # RECONCILIATION
 # =========================================================
 
-
 @app.get("/reconcile")
 def run_reconciliation(
-    current_user=Depends(get_current_user)
+    current_user=Depends(
+        get_current_user
+    )
 ):
 
     results = reconcile()
@@ -341,9 +440,16 @@ def run_reconciliation(
 
     return {
         "total_records": total,
+
         "matched_records": matched,
+
         "exceptions": exceptions,
-        "match_rate": round(match_rate, 2),
+
+        "match_rate": round(
+            match_rate,
+            2
+        ),
+
         "results": results
     }
 
@@ -352,11 +458,13 @@ def run_reconciliation(
 # ANALYZE PAYMENT
 # =========================================================
 
-
 @app.get("/analyze/{payment_id}")
 def analyze_payment(
     payment_id: str,
-    current_user=Depends(get_current_user)
+
+    current_user=Depends(
+        get_current_user
+    )
 ):
 
     results = reconcile()
@@ -365,11 +473,17 @@ def analyze_payment(
 
     for result in results:
 
-        if result.get("payment_id") == payment_id:
+        if result.get(
+            "payment_id"
+        ) == payment_id:
 
             exception = result
 
             break
+
+    # -----------------------------------------------------
+    # Payment doesn't exist
+    # -----------------------------------------------------
 
     if exception is None:
 
@@ -378,22 +492,42 @@ def analyze_payment(
             "payment_id": payment_id
         }
 
-    if exception.get("status") == "MATCHED":
+    # -----------------------------------------------------
+    # Already matched
+    # -----------------------------------------------------
+
+    if exception.get(
+        "status"
+    ) == "MATCHED":
 
         return {
             "payment_id": payment_id,
+
             "status": "MATCHED",
+
             "message": "No exception detected."
         }
+
+    # -----------------------------------------------------
+    # AI analysis
+    # -----------------------------------------------------
 
     analysis = analyze_exception(
         exception
     )
 
+    # -----------------------------------------------------
+    # Decision engine
+    # -----------------------------------------------------
+
     decision = make_decision(
         exception,
         analysis
     )
+
+    # -----------------------------------------------------
+    # Audit record
+    # -----------------------------------------------------
 
     audit = create_audit_record(
         exception,
@@ -403,10 +537,15 @@ def analyze_payment(
 
     return {
         "payment_id": payment_id,
+
         "status": "EXCEPTION",
+
         "reconciliation": exception,
+
         "ai_analysis": analysis,
+
         "decision": decision,
+
         "audit": audit
     }
 
@@ -415,10 +554,11 @@ def analyze_payment(
 # SUMMARY
 # =========================================================
 
-
 @app.get("/summary")
 def get_summary(
-    current_user=Depends(get_current_user)
+    current_user=Depends(
+        get_current_user
+    )
 ):
 
     results = reconcile()
@@ -428,13 +568,17 @@ def get_summary(
     matched = sum(
         1
         for r in results
-        if r.get("status") == "MATCHED"
+        if r.get(
+            "status"
+        ) == "MATCHED"
     )
 
     exceptions = sum(
         1
         for r in results
-        if r.get("status") == "EXCEPTION"
+        if r.get(
+            "status"
+        ) == "EXCEPTION"
     )
 
     match_rate = (
@@ -448,8 +592,11 @@ def get_summary(
 
     return {
         "total_transactions": total,
+
         "matched": matched,
+
         "exceptions": exceptions,
+
         "match_rate": match_rate
     }
 
@@ -458,10 +605,11 @@ def get_summary(
 # ANALYTICS
 # =========================================================
 
-
 @app.get("/analytics")
 def get_analytics(
-    current_user=Depends(get_current_user)
+    current_user=Depends(
+        get_current_user
+    )
 ):
 
     results = reconcile()
@@ -471,18 +619,28 @@ def get_analytics(
     matched = sum(
         1
         for r in results
-        if r.get("status") == "MATCHED"
+        if r.get(
+            "status"
+        ) == "MATCHED"
     )
 
     exceptions = [
         r
         for r in results
-        if r.get("status") == "EXCEPTION"
+        if r.get(
+            "status"
+        ) == "EXCEPTION"
     ]
 
     auto_resolve = 0
+
     manual_review = 0
+
     escalate = 0
+
+    # -----------------------------------------------------
+    # Analyze every exception
+    # -----------------------------------------------------
 
     for exception in exceptions:
 
@@ -512,8 +670,8 @@ def get_analytics(
             escalate += 1
 
     unresolved = (
-        manual_review +
-        escalate
+        manual_review
+        + escalate
     )
 
     match_rate = (
@@ -526,13 +684,23 @@ def get_analytics(
     )
 
     return {
+
         "batch_size": total,
+
         "matched": matched,
-        "exceptions": len(exceptions),
+
+        "exceptions": len(
+            exceptions
+        ),
+
         "match_rate": match_rate,
+
         "auto_resolved": auto_resolve,
+
         "manual_review": manual_review,
+
         "escalated": escalate,
+
         "unresolved": unresolved
     }
 
@@ -541,10 +709,11 @@ def get_analytics(
 # EXCEPTIONS
 # =========================================================
 
-
 @app.get("/exceptions")
 def get_exceptions(
-    current_user=Depends(get_current_user)
+    current_user=Depends(
+        get_current_user
+    )
 ):
 
     results = reconcile()
@@ -553,13 +722,27 @@ def get_exceptions(
 
     for exception in results:
 
-        if exception.get("status") != "EXCEPTION":
+        # -------------------------------------------------
+        # Only exceptions
+        # -------------------------------------------------
+
+        if exception.get(
+            "status"
+        ) != "EXCEPTION":
 
             continue
+
+        # -------------------------------------------------
+        # AI analysis
+        # -------------------------------------------------
 
         analysis = analyze_exception(
             exception
         )
+
+        # -------------------------------------------------
+        # Decision
+        # -------------------------------------------------
 
         decision = make_decision(
             exception,

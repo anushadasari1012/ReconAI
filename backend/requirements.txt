@@ -5,3 +5,5 @@ requests
 pandas
 openpyxl
 PyJWT
+SQLAlchemy
+bcrypt
