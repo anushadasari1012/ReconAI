@@ -1,122 +1,113 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { useEffect, useState } from "react";
+import "./App.css";
+
+const API_URL = "https://reconai-4kr7.onrender.com";
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [summary, setSummary] = useState(null);
+  const [health, setHealth] = useState(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [healthResponse, summaryResponse] = await Promise.all([
+          fetch(`${API_URL}/health`),
+          fetch(`${API_URL}/summary`),
+        ]);
+
+        if (!healthResponse.ok || !summaryResponse.ok) {
+          throw new Error("Could not reach the backend");
+        }
+
+        const healthData = await healthResponse.json();
+        const summaryData = await summaryResponse.json();
+
+        setHealth(healthData);
+        setSummary(summaryData);
+      } catch (err) {
+        console.error(err);
+        setError("We couldn't reach the server. Please try again.");
+      }
+    }
+
+    loadData();
+  }, []);
+
+  if (error) {
+    return (
+      <div className="error-container">
+        <div className="error-box">
+          <h2>Something went wrong</h2>
+          <p>{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
+    <div className="dashboard">
+      <header className="header">
         <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
+          <h1>ReconAI</h1>
+          <p>Payment Reconciliation Dashboard</p>
         </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
+        <div className="status">
+          <span className="status-dot"></span>
+          {health?.status || "Connecting..."}
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+      </header>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      <main>
+        <h2>Overview</h2>
+
+        {!summary ? (
+          <div className="loading">Loading dashboard...</div>
+        ) : (
+          <>
+            <div className="cards">
+              <div className="card">
+                <p>Total Transactions</p>
+                <h3>{summary.total_transactions}</h3>
+              </div>
+
+              <div className="card">
+                <p>Matched</p>
+                <h3>{summary.matched}</h3>
+              </div>
+
+              <div className="card">
+                <p>Exceptions</p>
+                <h3>{summary.exceptions}</h3>
+              </div>
+
+              <div className="card">
+                <p>Match Rate</p>
+                <h3>{summary.match_rate}%</h3>
+              </div>
+            </div>
+
+            <section className="summary">
+              <h2>Reconciliation Summary</h2>
+
+              <div className="progress-container">
+                <div
+                  className="progress"
+                  style={{ width: `${summary.match_rate}%` }}
+                ></div>
+              </div>
+
+              <p>
+                {summary.matched} of {summary.total_transactions} transactions
+                matched successfully.
+              </p>
+            </section>
+          </>
+        )}
+      </main>
+    </div>
+  );
 }
 
-export default App
+export default App;
