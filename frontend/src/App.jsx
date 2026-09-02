@@ -46,27 +46,45 @@ function App() {
           fetch(`${API_URL}/reconcile`),
         ]);
 
-        if (
-          !healthResponse.ok ||
-          !summaryResponse.ok ||
-          !analyticsResponse.ok ||
-          !exceptionsResponse.ok ||
-          !reconciliationResponse.ok
-        ) {
-          throw new Error("Could not reach the backend");
+        if (!healthResponse.ok) {
+          throw new Error("Health service is unavailable");
+        }
+
+        if (!summaryResponse.ok) {
+          throw new Error("Summary service is unavailable");
+        }
+
+        if (!analyticsResponse.ok) {
+          throw new Error("Analytics service is unavailable");
+        }
+
+        if (!exceptionsResponse.ok) {
+          throw new Error("Exceptions service is unavailable");
+        }
+
+        if (!reconciliationResponse.ok) {
+          throw new Error(
+            "Reconciliation service is unavailable"
+          );
         }
 
         const healthData = await healthResponse.json();
         const summaryData = await summaryResponse.json();
         const analyticsData = await analyticsResponse.json();
-        const exceptionsData = await exceptionsResponse.json();
+        const exceptionsData =
+          await exceptionsResponse.json();
         const reconciliationData =
           await reconciliationResponse.json();
 
         setHealth(healthData);
         setSummary(summaryData);
         setAnalytics(analyticsData);
-        setExceptions(exceptionsData);
+        setExceptions(
+          Array.isArray(exceptionsData)
+            ? exceptionsData
+            : []
+        );
+
         setReconciliation(
           reconciliationData.results || []
         );
@@ -186,7 +204,10 @@ function App() {
           statusFilter === "ALL" ||
           status === statusFilter;
 
-        return matchesSearch && matchesStatus;
+        return (
+          matchesSearch &&
+          matchesStatus
+        );
       }
     );
 
@@ -218,7 +239,15 @@ function App() {
       <div className="error-container">
         <div className="error-box">
           <h2>Something went wrong</h2>
+
           <p>{error}</p>
+
+          <button
+            className="reset-button"
+            onClick={() => window.location.reload()}
+          >
+            Retry
+          </button>
         </div>
       </div>
     );
@@ -275,38 +304,54 @@ function App() {
               <div className="cards">
 
                 <div className="card">
-                  <p>Total Transactions</p>
+
+                  <p>
+                    Total Transactions
+                  </p>
 
                   <h3>
                     {summary.total_transactions}
                   </h3>
+
                 </div>
 
 
                 <div className="card">
-                  <p>Matched</p>
+
+                  <p>
+                    Matched
+                  </p>
 
                   <h3>
                     {summary.matched}
                   </h3>
+
                 </div>
 
 
                 <div className="card">
-                  <p>Exceptions</p>
+
+                  <p>
+                    Exceptions
+                  </p>
 
                   <h3>
                     {summary.exceptions}
                   </h3>
+
                 </div>
 
 
                 <div className="card">
-                  <p>Match Rate</p>
+
+                  <p>
+                    Match Rate
+                  </p>
 
                   <h3>
                     {summary.match_rate}%
                   </h3>
+
                 </div>
 
               </div>
@@ -365,47 +410,67 @@ function App() {
               <div className="analytics-cards">
 
                 <div className="analytics-card">
-                  <span>Batch Size</span>
+
+                  <span>
+                    Batch Size
+                  </span>
 
                   <strong>
                     {analytics.batch_size}
                   </strong>
+
                 </div>
 
 
                 <div className="analytics-card">
-                  <span>Auto Resolved</span>
+
+                  <span>
+                    Auto Resolved
+                  </span>
 
                   <strong>
                     {analytics.auto_resolved}
                   </strong>
+
                 </div>
 
 
                 <div className="analytics-card">
-                  <span>Manual Review</span>
+
+                  <span>
+                    Manual Review
+                  </span>
 
                   <strong>
                     {analytics.manual_review}
                   </strong>
+
                 </div>
 
 
                 <div className="analytics-card">
-                  <span>Escalated</span>
+
+                  <span>
+                    Escalated
+                  </span>
 
                   <strong>
                     {analytics.escalated}
                   </strong>
+
                 </div>
 
 
                 <div className="analytics-card">
-                  <span>Unresolved</span>
+
+                  <span>
+                    Unresolved
+                  </span>
 
                   <strong>
                     {analytics.unresolved}
                   </strong>
+
                 </div>
 
               </div>
@@ -441,9 +506,10 @@ function App() {
                       style={{
                         width: `${
                           analytics.exceptions
-                            ? (analytics.auto_resolved /
-                                analytics.exceptions) *
-                              100
+                            ? (
+                                analytics.auto_resolved /
+                                analytics.exceptions
+                              ) * 100
                             : 0
                         }%`,
                       }}
@@ -477,9 +543,10 @@ function App() {
                       style={{
                         width: `${
                           analytics.exceptions
-                            ? (analytics.manual_review /
-                                analytics.exceptions) *
-                              100
+                            ? (
+                                analytics.manual_review /
+                                analytics.exceptions
+                              ) * 100
                             : 0
                         }%`,
                       }}
@@ -513,9 +580,10 @@ function App() {
                       style={{
                         width: `${
                           analytics.exceptions
-                            ? (analytics.escalated /
-                                analytics.exceptions) *
-                              100
+                            ? (
+                                analytics.escalated /
+                                analytics.exceptions
+                              ) * 100
                             : 0
                         }%`,
                       }}
@@ -549,15 +617,236 @@ function App() {
                       style={{
                         width: `${
                           analytics.exceptions
-                            ? (analytics.unresolved /
-                                analytics.exceptions) *
-                              100
+                            ? (
+                                analytics.unresolved /
+                                analytics.exceptions
+                              ) * 100
                             : 0
                         }%`,
                       }}
                     ></div>
 
                   </div>
+
+                </div>
+
+              </div>
+
+            </>
+
+          )}
+
+        </section>
+
+
+        {/* =========================
+            REPORTS
+            ========================= */}
+
+        <section className="reports-section">
+
+          <div className="section-heading">
+
+            <div>
+
+              <h2>
+                Reports
+              </h2>
+
+              <p>
+                Reconciliation performance summary
+              </p>
+
+            </div>
+
+            <div className="exception-count">
+
+              {summary?.total_transactions || 0} Transactions
+
+            </div>
+
+          </div>
+
+
+          {!summary ? (
+
+            <div className="loading">
+              Loading reports...
+            </div>
+
+          ) : (
+
+            <>
+
+              {/* Report Cards */}
+
+              <div className="analytics-cards">
+
+                <div className="analytics-card">
+
+                  <span>
+                    Total Transactions
+                  </span>
+
+                  <strong>
+                    {summary.total_transactions}
+                  </strong>
+
+                </div>
+
+
+                <div className="analytics-card">
+
+                  <span>
+                    Successfully Matched
+                  </span>
+
+                  <strong>
+                    {summary.matched}
+                  </strong>
+
+                </div>
+
+
+                <div className="analytics-card">
+
+                  <span>
+                    Exceptions
+                  </span>
+
+                  <strong>
+                    {summary.exceptions}
+                  </strong>
+
+                </div>
+
+
+                <div className="analytics-card">
+
+                  <span>
+                    Match Rate
+                  </span>
+
+                  <strong>
+                    {summary.match_rate}%
+                  </strong>
+
+                </div>
+
+              </div>
+
+
+              {/* Reconciliation Performance */}
+
+              <div className="analytics-panel">
+
+                <h2>
+                  Reconciliation Performance
+                </h2>
+
+
+                {/* Matched Transactions */}
+
+                <div className="bar-row">
+
+                  <div className="bar-label">
+
+                    <span>
+                      Matched Transactions
+                    </span>
+
+                    <strong>
+                      {summary.matched}
+                    </strong>
+
+                  </div>
+
+
+                  <div className="bar-container">
+
+                    <div
+                      className="bar auto"
+                      style={{
+                        width: `${
+                          summary.total_transactions
+                            ? (
+                                summary.matched /
+                                summary.total_transactions
+                              ) * 100
+                            : 0
+                        }%`,
+                      }}
+                    ></div>
+
+                  </div>
+
+                </div>
+
+
+                {/* Exception Transactions */}
+
+                <div className="bar-row">
+
+                  <div className="bar-label">
+
+                    <span>
+                      Exception Transactions
+                    </span>
+
+                    <strong>
+                      {summary.exceptions}
+                    </strong>
+
+                  </div>
+
+
+                  <div className="bar-container">
+
+                    <div
+                      className="bar escalated"
+                      style={{
+                        width: `${
+                          summary.total_transactions
+                            ? (
+                                summary.exceptions /
+                                summary.total_transactions
+                              ) * 100
+                            : 0
+                        }%`,
+                      }}
+                    ></div>
+
+                  </div>
+
+                </div>
+
+
+                {/* Report Summary */}
+
+                <div className="report-summary-text">
+
+                  <p>
+
+                    <strong>
+                      {summary.match_rate}%
+                    </strong>{" "}
+
+                    of transactions were
+                    successfully reconciled.
+
+                  </p>
+
+
+                  <p>
+
+                    <strong>
+                      {summary.exceptions}
+                    </strong>{" "}
+
+                    transactions require further
+                    investigation.
+
+                  </p>
 
                 </div>
 
@@ -648,13 +937,17 @@ function App() {
           <p className="filter-result">
 
             Showing{" "}
+
             <strong>
               {filteredReconciliation.length}
             </strong>{" "}
+
             of{" "}
+
             <strong>
               {reconciliation.length}
             </strong>{" "}
+
             transactions
 
           </p>
@@ -940,13 +1233,17 @@ function App() {
           <p className="filter-result">
 
             Showing{" "}
+
             <strong>
               {filteredExceptions.length}
             </strong>{" "}
+
             of{" "}
+
             <strong>
               {exceptions.length}
             </strong>{" "}
+
             exceptions
 
           </p>

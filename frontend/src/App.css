@@ -618,3 +618,27 @@ main h2 {
     min-width: 100%;
   }
 }
+
+/* =========================
+   REPORTS
+   ========================= */
+
+.reports-section {
+  margin-top: 40px;
+}
+
+.report-summary-text {
+  margin-top: 25px;
+  padding-top: 20px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.report-summary-text p {
+  margin: 8px 0;
+  color: #4b5563;
+  font-size: 15px;
+}
+
+.report-summary-text strong {
+  font-weight: 700;
+}
