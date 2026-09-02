@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import "./App.css";
 
 const API_URL = "https://reconai-4kr7.onrender.com";
+
 function App() {
   // =========================
   // AUTHENTICATION
@@ -29,17 +30,26 @@ function App() {
   const [health, setHealth] = useState(null);
   const [error, setError] = useState("");
 
-  // Exception investigation
+  // =========================
+  // EXCEPTION INVESTIGATION
+  // =========================
+
   const [selectedException, setSelectedException] = useState(null);
   const [details, setDetails] = useState(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
 
-  // Exception filters
+  // =========================
+  // EXCEPTION FILTERS
+  // =========================
+
   const [searchTerm, setSearchTerm] = useState("");
   const [riskFilter, setRiskFilter] = useState("ALL");
   const [decisionFilter, setDecisionFilter] = useState("ALL");
 
-  // Reconciliation filters
+  // =========================
+  // RECONCILIATION FILTERS
+  // =========================
+
   const [reconSearch, setReconSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
 
@@ -60,7 +70,7 @@ function App() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          username,
+          username: username.trim(),
           password,
         }),
       });
@@ -73,14 +83,21 @@ function App() {
         );
       }
 
+      if (!data.access_token) {
+        throw new Error("Login succeeded but no token was received.");
+      }
+
       localStorage.setItem(
         "reconai_token",
         data.access_token
       );
 
       setToken(data.access_token);
+
+      setUsername("");
+      setPassword("");
     } catch (err) {
-      console.error(err);
+      console.error("Login error:", err);
 
       setLoginError(
         err.message || "Login failed. Please try again."
@@ -104,6 +121,13 @@ function App() {
     setAnalytics(null);
     setExceptions([]);
     setReconciliation([]);
+    setHealth(null);
+
+    setSelectedException(null);
+    setDetails(null);
+
+    setError("");
+    setLoginError("");
   }
 
   // =========================
@@ -113,6 +137,11 @@ function App() {
   async function authenticatedFetch(url, options = {}) {
     const currentToken =
       localStorage.getItem("reconai_token");
+
+    if (!currentToken) {
+      handleLogout();
+      throw new Error("You are not authenticated.");
+    }
 
     const headers = {
       ...(options.headers || {}),
@@ -148,18 +177,35 @@ function App() {
         );
 
         if (!response.ok) {
-          throw new Error("Authentication failed");
+          throw new Error("Authentication failed.");
         }
 
         const data = await response.json();
 
-        setUser(data);
-      } catch (err) {
-        console.error(err);
+        /*
+          Backend /me response:
 
-        localStorage.removeItem(
-          "reconai_token"
-        );
+          {
+            "authenticated": true,
+            "user": {
+              "username": "...",
+              "role": "...",
+              "name": "..."
+            }
+          }
+
+          Therefore we use data.user.
+        */
+
+        if (!data.user) {
+          throw new Error("User information was not returned.");
+        }
+
+        setUser(data.user);
+      } catch (err) {
+        console.error("User verification error:", err);
+
+        localStorage.removeItem("reconai_token");
 
         setToken(null);
         setUser(null);
@@ -182,59 +228,86 @@ function App() {
       try {
         setError("");
 
+        /*
+          Admin:
+          - summary
+          - analytics
+          - exceptions
+          - reconciliation
+
+          Employee:
+          - summary
+          - exceptions
+          - reconciliation
+
+          Analytics is loaded only for ADMIN.
+        */
+
+        const healthPromise = fetch(
+          `${API_URL}/health`
+        );
+
+        const summaryPromise = authenticatedFetch(
+          `${API_URL}/summary`
+        );
+
+        const exceptionsPromise = authenticatedFetch(
+          `${API_URL}/exceptions`
+        );
+
+        const reconciliationPromise = authenticatedFetch(
+          `${API_URL}/reconcile`
+        );
+
         const [
           healthResponse,
           summaryResponse,
-          analyticsResponse,
           exceptionsResponse,
           reconciliationResponse,
         ] = await Promise.all([
-          fetch(`${API_URL}/health`),
-
-          authenticatedFetch(
-            `${API_URL}/summary`
-          ),
-
-          authenticatedFetch(
-            `${API_URL}/analytics`
-          ),
-
-          authenticatedFetch(
-            `${API_URL}/exceptions`
-          ),
-
-          authenticatedFetch(
-            `${API_URL}/reconcile`
-          ),
+          healthPromise,
+          summaryPromise,
+          exceptionsPromise,
+          reconciliationPromise,
         ]);
+
+        // -------------------------
+        // HEALTH
+        // -------------------------
 
         if (!healthResponse.ok) {
           throw new Error(
-            "Health service is unavailable"
+            "Health service is unavailable."
           );
         }
+
+        // -------------------------
+        // SUMMARY
+        // -------------------------
 
         if (!summaryResponse.ok) {
           throw new Error(
-            "Summary service is unavailable"
+            "Summary service is unavailable."
           );
         }
 
-        if (!analyticsResponse.ok) {
-          throw new Error(
-            "Analytics service is unavailable"
-          );
-        }
+        // -------------------------
+        // EXCEPTIONS
+        // -------------------------
 
         if (!exceptionsResponse.ok) {
           throw new Error(
-            "Exceptions service is unavailable"
+            "Exceptions service is unavailable."
           );
         }
 
+        // -------------------------
+        // RECONCILIATION
+        // -------------------------
+
         if (!reconciliationResponse.ok) {
           throw new Error(
-            "Reconciliation service is unavailable"
+            "Reconciliation service is unavailable."
           );
         }
 
@@ -244,9 +317,6 @@ function App() {
         const summaryData =
           await summaryResponse.json();
 
-        const analyticsData =
-          await analyticsResponse.json();
-
         const exceptionsData =
           await exceptionsResponse.json();
 
@@ -255,7 +325,6 @@ function App() {
 
         setHealth(healthData);
         setSummary(summaryData);
-        setAnalytics(analyticsData);
 
         setExceptions(
           Array.isArray(exceptionsData)
@@ -266,8 +335,38 @@ function App() {
         setReconciliation(
           reconciliationData.results || []
         );
+
+        // =========================
+        // ADMIN ANALYTICS
+        // =========================
+
+        if (user.role === "ADMIN") {
+          try {
+            const analyticsResponse =
+              await authenticatedFetch(
+                `${API_URL}/analytics`
+              );
+
+            if (analyticsResponse.ok) {
+              const analyticsData =
+                await analyticsResponse.json();
+
+              setAnalytics(analyticsData);
+            }
+          } catch (analyticsError) {
+            console.error(
+              "Analytics loading error:",
+              analyticsError
+            );
+          }
+        } else {
+          setAnalytics(null);
+        }
       } catch (err) {
-        console.error(err);
+        console.error(
+          "Dashboard loading error:",
+          err
+        );
 
         setError(
           err.message ||
@@ -295,16 +394,41 @@ function App() {
         );
 
       if (!response.ok) {
-        throw new Error(
-          "Could not load payment details"
-        );
+        let message =
+          "Could not load payment details.";
+
+        try {
+          const errorData =
+            await response.json();
+
+          message =
+            errorData.detail ||
+            errorData.error ||
+            message;
+        } catch {
+          // Ignore JSON parsing error
+        }
+
+        throw new Error(message);
       }
 
       const data = await response.json();
 
       setDetails(data);
+
+      // Scroll to investigation panel
+      setTimeout(() => {
+        document
+          .getElementById("investigation")
+          ?.scrollIntoView({
+            behavior: "smooth",
+          });
+      }, 100);
     } catch (err) {
-      console.error(err);
+      console.error(
+        "Exception investigation error:",
+        err
+      );
 
       alert(
         err.message ||
@@ -417,9 +541,12 @@ function App() {
   if (!token) {
     return (
       <div className="login-container">
+
         <div className="login-box">
 
-          <h1>ReconAI</h1>
+          <h1>
+            ReconAI
+          </h1>
 
           <p className="login-subtitle">
             Payment Reconciliation System
@@ -438,6 +565,7 @@ function App() {
                 setUsername(e.target.value)
               }
               placeholder="Enter username"
+              autoComplete="username"
               required
             />
 
@@ -452,6 +580,7 @@ function App() {
                 setPassword(e.target.value)
               }
               placeholder="Enter password"
+              autoComplete="current-password"
               required
             />
 
@@ -473,23 +602,54 @@ function App() {
 
           </form>
 
+          {/* =========================
+              DEMO ACCOUNTS
+              ========================= */}
+
           <div className="demo-login">
 
             <p>
-              <strong>Demo Admin</strong>
+              <strong>
+                Demo Accounts
+              </strong>
             </p>
 
-            <p>
-              Username: admin
-            </p>
+            <div className="demo-account">
 
-            <p>
-              Password: admin123
-            </p>
+              <strong>
+                Admin
+              </strong>
+
+              <p>
+                Username: admin
+              </p>
+
+              <p>
+                Password: admin123
+              </p>
+
+            </div>
+
+            <div className="demo-account">
+
+              <strong>
+                Employee
+              </strong>
+
+              <p>
+                Username: employee
+              </p>
+
+              <p>
+                Password: employee123
+              </p>
+
+            </div>
 
           </div>
 
         </div>
+
       </div>
     );
   }
@@ -501,9 +661,11 @@ function App() {
   if (!user) {
     return (
       <div className="loading-screen">
+
         <div className="loading">
           Authenticating...
         </div>
+
       </div>
     );
   }
@@ -555,7 +717,9 @@ function App() {
   return (
     <div className="dashboard">
 
-      {/* HEADER */}
+      {/* =========================
+          HEADER
+          ========================= */}
 
       <header className="header">
 
@@ -576,7 +740,7 @@ function App() {
           <div className="user-info">
 
             <strong>
-              {user.username}
+              {user.name || user.username}
             </strong>
 
             <span>
@@ -611,7 +775,10 @@ function App() {
             OVERVIEW
             ========================= */}
 
-        <section>
+        <section
+          id="overview"
+          className="overview-section"
+        >
 
           <h2>
             Overview
@@ -630,43 +797,51 @@ function App() {
               <div className="cards">
 
                 <div className="card">
+
                   <p>
                     Total Transactions
                   </p>
 
                   <h3>
-                    {summary.total_transactions}
+                    {summary.total_transactions ?? 0}
                   </h3>
+
                 </div>
 
                 <div className="card">
+
                   <p>
                     Matched
                   </p>
 
                   <h3>
-                    {summary.matched}
+                    {summary.matched ?? 0}
                   </h3>
+
                 </div>
 
                 <div className="card">
+
                   <p>
                     Exceptions
                   </p>
 
                   <h3>
-                    {summary.exceptions}
+                    {summary.exceptions ?? 0}
                   </h3>
+
                 </div>
 
                 <div className="card">
+
                   <p>
                     Match Rate
                   </p>
 
                   <h3>
-                    {summary.match_rate}%
+                    {summary.match_rate ?? 0}%
                   </h3>
+
                 </div>
 
               </div>
@@ -682,16 +857,23 @@ function App() {
                   <div
                     className="progress"
                     style={{
-                      width:
-                        `${summary.match_rate}%`,
+                      width: `${Math.min(
+                        Math.max(
+                          Number(
+                            summary.match_rate || 0
+                          ),
+                          0
+                        ),
+                        100
+                      )}%`,
                     }}
                   ></div>
 
                 </div>
 
                 <p>
-                  {summary.matched} of{" "}
-                  {summary.total_transactions}{" "}
+                  {summary.matched ?? 0} of{" "}
+                  {summary.total_transactions ?? 0}{" "}
                   transactions matched successfully.
                 </p>
 
@@ -704,90 +886,274 @@ function App() {
         </section>
 
         {/* =========================
-            ANALYTICS
+            ADMIN ONLY: ANALYTICS
             ========================= */}
 
-        <section className="analytics-section">
+        {user.role === "ADMIN" && (
+          <section
+            id="analytics"
+            className="analytics-section"
+          >
 
-          <h2>
-            Analytics
-          </h2>
+            <h2>
+              Analytics
+            </h2>
 
-          {!analytics ? (
+            {!analytics ? (
 
-            <div className="loading">
-              Loading analytics...
-            </div>
+              <div className="loading">
+                Loading analytics...
+              </div>
 
-          ) : (
+            ) : (
 
-            <>
+              <>
 
-              <div className="analytics-cards">
+                <div className="analytics-cards">
 
-                <div className="analytics-card">
-                  <span>Batch Size</span>
-                  <strong>
-                    {analytics.batch_size}
-                  </strong>
+                  <div className="analytics-card">
+                    <span>
+                      Batch Size
+                    </span>
+
+                    <strong>
+                      {analytics.batch_size ?? 0}
+                    </strong>
+                  </div>
+
+                  <div className="analytics-card">
+                    <span>
+                      Auto Resolved
+                    </span>
+
+                    <strong>
+                      {analytics.auto_resolved ?? 0}
+                    </strong>
+                  </div>
+
+                  <div className="analytics-card">
+                    <span>
+                      Manual Review
+                    </span>
+
+                    <strong>
+                      {analytics.manual_review ?? 0}
+                    </strong>
+                  </div>
+
+                  <div className="analytics-card">
+                    <span>
+                      Escalated
+                    </span>
+
+                    <strong>
+                      {analytics.escalated ?? 0}
+                    </strong>
+                  </div>
+
+                  <div className="analytics-card">
+                    <span>
+                      Unresolved
+                    </span>
+
+                    <strong>
+                      {analytics.unresolved ?? 0}
+                    </strong>
+                  </div>
+
                 </div>
 
-                <div className="analytics-card">
-                  <span>Auto Resolved</span>
-                  <strong>
-                    {analytics.auto_resolved}
-                  </strong>
+                <div className="analytics-panel">
+
+                  <h2>
+                    Exception Breakdown
+                  </h2>
+
+                  {[
+                    [
+                      "Auto Resolved",
+                      analytics.auto_resolved ?? 0,
+                      "auto",
+                    ],
+                    [
+                      "Manual Review",
+                      analytics.manual_review ?? 0,
+                      "manual",
+                    ],
+                    [
+                      "Escalated",
+                      analytics.escalated ?? 0,
+                      "escalated",
+                    ],
+                    [
+                      "Unresolved",
+                      analytics.unresolved ?? 0,
+                      "unresolved",
+                    ],
+                  ].map(
+                    ([label, value, className]) => (
+
+                      <div
+                        className="bar-row"
+                        key={label}
+                      >
+
+                        <div className="bar-label">
+
+                          <span>
+                            {label}
+                          </span>
+
+                          <strong>
+                            {value}
+                          </strong>
+
+                        </div>
+
+                        <div className="bar-container">
+
+                          <div
+                            className={`bar ${className}`}
+                            style={{
+                              width: `${
+                                analytics.exceptions
+                                  ? Math.min(
+                                      (
+                                        value /
+                                        analytics.exceptions
+                                      ) * 100,
+                                      100
+                                    )
+                                  : 0
+                              }%`,
+                            }}
+                          ></div>
+
+                        </div>
+
+                      </div>
+
+                    )
+                  )}
+
                 </div>
 
-                <div className="analytics-card">
-                  <span>Manual Review</span>
-                  <strong>
-                    {analytics.manual_review}
-                  </strong>
-                </div>
+              </>
 
-                <div className="analytics-card">
-                  <span>Escalated</span>
-                  <strong>
-                    {analytics.escalated}
-                  </strong>
-                </div>
+            )}
 
-                <div className="analytics-card">
-                  <span>Unresolved</span>
-                  <strong>
-                    {analytics.unresolved}
-                  </strong>
-                </div>
+          </section>
+        )}
+
+        {/* =========================
+            ADMIN ONLY: REPORTS
+            ========================= */}
+
+        {user.role === "ADMIN" && (
+          <section
+            id="reports"
+            className="reports-section"
+          >
+
+            <div className="section-heading">
+
+              <div>
+
+                <h2>
+                  Reports
+                </h2>
+
+                <p>
+                  Reconciliation performance summary
+                </p>
 
               </div>
 
-              <div className="analytics-panel">
+              <div className="exception-count">
+                {summary?.total_transactions || 0}
+                {" "}Transactions
+              </div>
 
-                <h2>
-                  Exception Breakdown
-                </h2>
+            </div>
 
-                {[
-                  ["Auto Resolved", analytics.auto_resolved, "auto"],
-                  ["Manual Review", analytics.manual_review, "manual"],
-                  ["Escalated", analytics.escalated, "escalated"],
-                  ["Unresolved", analytics.unresolved, "unresolved"],
-                ].map(([label, value, className]) => (
+            {!summary ? (
 
-                  <div
-                    className="bar-row"
-                    key={label}
-                  >
+              <div className="loading">
+                Loading reports...
+              </div>
+
+            ) : (
+
+              <>
+
+                <div className="analytics-cards">
+
+                  <div className="analytics-card">
+
+                    <span>
+                      Total Transactions
+                    </span>
+
+                    <strong>
+                      {summary.total_transactions}
+                    </strong>
+
+                  </div>
+
+                  <div className="analytics-card">
+
+                    <span>
+                      Successfully Matched
+                    </span>
+
+                    <strong>
+                      {summary.matched}
+                    </strong>
+
+                  </div>
+
+                  <div className="analytics-card">
+
+                    <span>
+                      Exceptions
+                    </span>
+
+                    <strong>
+                      {summary.exceptions}
+                    </strong>
+
+                  </div>
+
+                  <div className="analytics-card">
+
+                    <span>
+                      Match Rate
+                    </span>
+
+                    <strong>
+                      {summary.match_rate}%
+                    </strong>
+
+                  </div>
+
+                </div>
+
+                <div className="analytics-panel">
+
+                  <h2>
+                    Reconciliation Performance
+                  </h2>
+
+                  <div className="bar-row">
 
                     <div className="bar-label">
 
                       <span>
-                        {label}
+                        Matched Transactions
                       </span>
 
                       <strong>
-                        {value}
+                        {summary.matched}
                       </strong>
 
                     </div>
@@ -795,13 +1161,13 @@ function App() {
                     <div className="bar-container">
 
                       <div
-                        className={`bar ${className}`}
+                        className="bar auto"
                         style={{
                           width: `${
-                            analytics.exceptions
+                            summary.total_transactions
                               ? (
-                                  value /
-                                  analytics.exceptions
+                                  summary.matched /
+                                  summary.total_transactions
                                 ) * 100
                               : 0
                           }%`,
@@ -812,200 +1178,77 @@ function App() {
 
                   </div>
 
-                ))}
+                  <div className="bar-row">
 
-              </div>
+                    <div className="bar-label">
 
-            </>
+                      <span>
+                        Exception Transactions
+                      </span>
 
-          )}
+                      <strong>
+                        {summary.exceptions}
+                      </strong>
 
-        </section>
+                    </div>
 
-        {/* =========================
-            REPORTS
-            ========================= */}
+                    <div className="bar-container">
 
-        <section className="reports-section">
+                      <div
+                        className="bar escalated"
+                        style={{
+                          width: `${
+                            summary.total_transactions
+                              ? (
+                                  summary.exceptions /
+                                  summary.total_transactions
+                                ) * 100
+                              : 0
+                          }%`,
+                        }}
+                      ></div>
 
-          <div className="section-heading">
+                    </div>
 
-            <div>
-
-              <h2>
-                Reports
-              </h2>
-
-              <p>
-                Reconciliation performance summary
-              </p>
-
-            </div>
-
-            <div className="exception-count">
-              {summary?.total_transactions || 0}
-              {" "}Transactions
-            </div>
-
-          </div>
-
-          {!summary ? (
-
-            <div className="loading">
-              Loading reports...
-            </div>
-
-          ) : (
-
-            <>
-
-              <div className="analytics-cards">
-
-                <div className="analytics-card">
-                  <span>
-                    Total Transactions
-                  </span>
-
-                  <strong>
-                    {summary.total_transactions}
-                  </strong>
-                </div>
-
-                <div className="analytics-card">
-                  <span>
-                    Successfully Matched
-                  </span>
-
-                  <strong>
-                    {summary.matched}
-                  </strong>
-                </div>
-
-                <div className="analytics-card">
-                  <span>
-                    Exceptions
-                  </span>
-
-                  <strong>
-                    {summary.exceptions}
-                  </strong>
-                </div>
-
-                <div className="analytics-card">
-                  <span>
-                    Match Rate
-                  </span>
-
-                  <strong>
-                    {summary.match_rate}%
-                  </strong>
-                </div>
-
-              </div>
-
-              <div className="analytics-panel">
-
-                <h2>
-                  Reconciliation Performance
-                </h2>
-
-                <div className="bar-row">
-
-                  <div className="bar-label">
-                    <span>
-                      Matched Transactions
-                    </span>
-
-                    <strong>
-                      {summary.matched}
-                    </strong>
                   </div>
 
-                  <div className="bar-container">
+                  <div className="report-summary-text">
 
-                    <div
-                      className="bar auto"
-                      style={{
-                        width: `${
-                          summary.total_transactions
-                            ? (
-                                summary.matched /
-                                summary.total_transactions
-                              ) * 100
-                            : 0
-                        }%`,
-                      }}
-                    ></div>
+                    <p>
+                      <strong>
+                        {summary.match_rate}%
+                      </strong>{" "}
+                      of transactions were
+                      successfully reconciled.
+                    </p>
+
+                    <p>
+                      <strong>
+                        {summary.exceptions}
+                      </strong>{" "}
+                      transactions require further
+                      investigation.
+                    </p>
 
                   </div>
 
                 </div>
 
-                <div className="bar-row">
+              </>
 
-                  <div className="bar-label">
-                    <span>
-                      Exception Transactions
-                    </span>
+            )}
 
-                    <strong>
-                      {summary.exceptions}
-                    </strong>
-                  </div>
-
-                  <div className="bar-container">
-
-                    <div
-                      className="bar escalated"
-                      style={{
-                        width: `${
-                          summary.total_transactions
-                            ? (
-                                summary.exceptions /
-                                summary.total_transactions
-                              ) * 100
-                            : 0
-                        }%`,
-                      }}
-                    ></div>
-
-                  </div>
-
-                </div>
-
-                <div className="report-summary-text">
-
-                  <p>
-                    <strong>
-                      {summary.match_rate}%
-                    </strong>{" "}
-                    of transactions were
-                    successfully reconciled.
-                  </p>
-
-                  <p>
-                    <strong>
-                      {summary.exceptions}
-                    </strong>{" "}
-                    transactions require further
-                    investigation.
-                  </p>
-
-                </div>
-
-              </div>
-
-            </>
-
-          )}
-
-        </section>
+          </section>
+        )}
 
         {/* =========================
             RECONCILIATION
             ========================= */}
 
-        <section className="reconciliation-section">
+        <section
+          id="reconciliation"
+          className="reconciliation-section"
+        >
 
           <div className="section-heading">
 
@@ -1082,6 +1325,7 @@ function App() {
             <strong>
               {reconciliation.length}
             </strong>{" "}
+
             transactions
 
           </p>
@@ -1216,7 +1460,10 @@ function App() {
             EXCEPTIONS
             ========================= */}
 
-        <section className="exceptions-section">
+        <section
+          id="exceptions"
+          className="exceptions-section"
+        >
 
           <div className="section-heading">
 
@@ -1311,13 +1558,17 @@ function App() {
           <p className="filter-result">
 
             Showing{" "}
+
             <strong>
               {filteredExceptions.length}
             </strong>{" "}
+
             of{" "}
+
             <strong>
               {exceptions.length}
             </strong>{" "}
+
             exceptions
 
           </p>
@@ -1370,11 +1621,14 @@ function App() {
                         </td>
 
                         <td>
-                          {exception.reason}
+                          {exception.reason || "—"}
                         </td>
 
                         <td>
-                          ₹{exception.expected_amount}
+                          {exception.expected_amount !==
+                          undefined
+                            ? `₹${exception.expected_amount}`
+                            : "—"}
                         </td>
 
                         <td>
@@ -1400,6 +1654,7 @@ function App() {
                         </td>
 
                         <td>
+
                           {exception.ai_confidence !==
                             null &&
                           exception.ai_confidence !==
@@ -1409,6 +1664,7 @@ function App() {
                                 100
                               ).toFixed(0)}%`
                             : "—"}
+
                         </td>
 
                         <td>
@@ -1459,270 +1715,342 @@ function App() {
             INVESTIGATION
             ========================= */}
 
-        {detailsLoading && (
+        <section
+          id="investigation"
+          className="details-panel"
+        >
 
-          <section className="details-panel">
+          {detailsLoading ? (
 
             <div className="loading">
               Loading investigation...
             </div>
 
-          </section>
+          ) : !details ? (
 
-        )}
-
-        {details && !detailsLoading && (
-
-          <section className="details-panel">
-
-            <div className="details-header">
-
-              <div>
-
-                <h2>
-                  Exception Investigation
-                </h2>
-
-                <p>
-                  Payment ID:{" "}
-                  <strong>
-                    {selectedException}
-                  </strong>
-                </p>
-
-              </div>
-
-              <button
-                className="close-button"
-                onClick={closeDetails}
-              >
-                Close
-              </button>
-
+            <div className="loading">
+              Select an exception and click
+              <strong> View Details </strong>
+              to investigate.
             </div>
 
-            <div className="details-grid">
+          ) : (
 
-              <div className="detail-card">
-                <span>Status</span>
+            <>
 
-                <strong>
-                  {details.status || "N/A"}
-                </strong>
+              <div className="details-header">
+
+                <div>
+
+                  <h2>
+                    Exception Investigation
+                  </h2>
+
+                  <p>
+                    Payment ID:{" "}
+                    <strong>
+                      {selectedException}
+                    </strong>
+                  </p>
+
+                </div>
+
+                <button
+                  className="close-button"
+                  onClick={closeDetails}
+                >
+                  Close
+                </button>
+
               </div>
 
-              <div className="detail-card">
-                <span>Risk Level</span>
+              {/* TOP DETAILS */}
 
-                <strong>
+              <div className="details-grid">
+
+                <div className="detail-card">
+
+                  <span>
+                    Status
+                  </span>
+
+                  <strong>
+                    {details.status || "N/A"}
+                  </strong>
+
+                </div>
+
+                <div className="detail-card">
+
+                  <span>
+                    Risk Level
+                  </span>
+
+                  <strong>
+                    {details.ai_analysis
+                      ?.risk_level ||
+                      "N/A"}
+                  </strong>
+
+                </div>
+
+                <div className="detail-card">
+
+                  <span>
+                    AI Confidence
+                  </span>
+
+                  <strong>
+
+                    {details.ai_analysis
+                      ?.confidence !== null &&
+                    details.ai_analysis
+                      ?.confidence !== undefined
+                      ? `${(
+                          details.ai_analysis.confidence *
+                          100
+                        ).toFixed(1)}%`
+                      : "N/A"}
+
+                  </strong>
+
+                </div>
+
+                <div className="detail-card">
+
+                  <span>
+                    Decision
+                  </span>
+
+                  <strong>
+                    {details.decision
+                      ?.decision ||
+                      "N/A"}
+                  </strong>
+
+                </div>
+
+              </div>
+
+              {/* RECONCILIATION DETAILS */}
+
+              <div className="analysis-box">
+
+                <h3>
+                  Reconciliation Details
+                </h3>
+
+                <p>
+
+                  <strong>
+                    Reason:
+                  </strong>{" "}
+
+                  {details.reconciliation
+                    ?.reason ||
+                    "N/A"}
+
+                </p>
+
+                <p>
+
+                  <strong>
+                    Expected Amount:
+                  </strong>{" "}
+
+                  {details.reconciliation
+                    ?.expected_amount !==
+                  undefined
+                    ? `₹${details.reconciliation.expected_amount}`
+                    : "N/A"}
+
+                </p>
+
+                <p>
+
+                  <strong>
+                    Settled Amount:
+                  </strong>{" "}
+
+                  {details.reconciliation
+                    ?.settled_amount !== null &&
+                  details.reconciliation
+                    ?.settled_amount !==
+                    undefined
+                    ? `₹${details.reconciliation.settled_amount}`
+                    : "Not settled"}
+
+                </p>
+
+                {details.reconciliation
+                  ?.difference !==
+                  undefined && (
+
+                  <p>
+
+                    <strong>
+                      Difference:
+                    </strong>{" "}
+
+                    ₹
+                    {
+                      details.reconciliation
+                        .difference
+                    }
+
+                  </p>
+
+                )}
+
+                {details.reconciliation
+                  ?.date_difference_days !==
+                  undefined && (
+
+                  <p>
+
+                    <strong>
+                      Date Difference:
+                    </strong>{" "}
+
+                    {
+                      details.reconciliation
+                        .date_difference_days
+                    }{" "}
+                    days
+
+                  </p>
+
+                )}
+
+              </div>
+
+              {/* AI ANALYSIS */}
+
+              <div className="analysis-box">
+
+                <h3>
+                  AI Analysis
+                </h3>
+
+                <p>
+
+                  <strong>
+                    Risk Level:
+                  </strong>{" "}
+
                   {details.ai_analysis
-                    ?.risk_level || "N/A"}
-                </strong>
-              </div>
+                    ?.risk_level ||
+                    "N/A"}
 
-              <div className="detail-card">
+                </p>
 
-                <span>
-                  AI Confidence
-                </span>
+                <p>
 
-                <strong>
+                  <strong>
+                    AI Confidence:
+                  </strong>{" "}
 
                   {details.ai_analysis
                     ?.confidence !== null &&
                   details.ai_analysis
-                    ?.confidence !== undefined
+                    ?.confidence !==
+                    undefined
                     ? `${(
                         details.ai_analysis.confidence *
                         100
                       ).toFixed(1)}%`
                     : "N/A"}
 
-                </strong>
+                </p>
+
+                <p>
+
+                  <strong>
+                    Recommended Action:
+                  </strong>{" "}
+
+                  {details.ai_analysis
+                    ?.recommended_action ||
+                    "N/A"}
+
+                </p>
 
               </div>
 
-              <div className="detail-card">
-
-                <span>
-                  Decision
-                </span>
-
-                <strong>
-                  {details.decision
-                    ?.decision || "N/A"}
-                </strong>
-
-              </div>
-
-            </div>
-
-            <div className="analysis-box">
-
-              <h3>
-                Reconciliation Details
-              </h3>
-
-              <p>
-                <strong>
-                  Reason:
-                </strong>{" "}
-                {details.reconciliation
-                  ?.reason || "N/A"}
-              </p>
-
-              <p>
-                <strong>
-                  Expected Amount:
-                </strong>{" "}
-                {details.reconciliation
-                  ?.expected_amount !== undefined
-                  ? `₹${details.reconciliation.expected_amount}`
-                  : "N/A"}
-              </p>
-
-              <p>
-                <strong>
-                  Settled Amount:
-                </strong>{" "}
-                {details.reconciliation
-                  ?.settled_amount !== null &&
-                details.reconciliation
-                  ?.settled_amount !== undefined
-                  ? `₹${details.reconciliation.settled_amount}`
-                  : "Not settled"}
-              </p>
-
-              {details.reconciliation
-                ?.difference !== undefined && (
-
-                <p>
-                  <strong>
-                    Difference:
-                  </strong>{" "}
-                  ₹{details.reconciliation.difference}
-                </p>
-
-              )}
-
-              {details.reconciliation
-                ?.date_difference_days !==
-                undefined && (
-
-                <p>
-                  <strong>
-                    Date Difference:
-                  </strong>{" "}
-                  {
-                    details.reconciliation
-                      .date_difference_days
-                  }{" "}
-                  days
-                </p>
-
-              )}
-
-            </div>
-
-            <div className="analysis-box">
-
-              <h3>
-                AI Analysis
-              </h3>
-
-              <p>
-                <strong>
-                  Risk Level:
-                </strong>{" "}
-                {details.ai_analysis
-                  ?.risk_level || "N/A"}
-              </p>
-
-              <p>
-                <strong>
-                  AI Confidence:
-                </strong>{" "}
-                {details.ai_analysis
-                  ?.confidence !== null &&
-                details.ai_analysis
-                  ?.confidence !== undefined
-                  ? `${(
-                      details.ai_analysis.confidence *
-                      100
-                    ).toFixed(1)}%`
-                  : "N/A"}
-              </p>
-
-              <p>
-                <strong>
-                  Recommended Action:
-                </strong>{" "}
-                {details.ai_analysis
-                  ?.recommended_action ||
-                  "N/A"}
-              </p>
-
-            </div>
-
-            <div className="analysis-box">
-
-              <h3>
-                Decision
-              </h3>
-
-              <p>
-                <strong>
-                  Decision:
-                </strong>{" "}
-                {details.decision
-                  ?.decision || "N/A"}
-              </p>
-
-              <p>
-                <strong>
-                  Reason:
-                </strong>{" "}
-                {details.decision
-                  ?.reason ||
-                  "No decision reason available."}
-              </p>
-
-            </div>
-
-            {details.audit && (
+              {/* DECISION */}
 
               <div className="analysis-box">
 
                 <h3>
-                  Audit Information
+                  Decision
                 </h3>
 
-                {Object.entries(
-                  details.audit
-                ).map(([key, value]) => (
+                <p>
 
-                  <p key={key}>
+                  <strong>
+                    Decision:
+                  </strong>{" "}
 
-                    <strong>
-                      {key.replace(
-                        /_/g,
-                        " "
-                      )}:
-                    </strong>{" "}
+                  {details.decision
+                    ?.decision ||
+                    "N/A"}
 
-                    {String(value)}
+                </p>
 
-                  </p>
+                <p>
 
-                ))}
+                  <strong>
+                    Reason:
+                  </strong>{" "}
+
+                  {details.decision
+                    ?.reason ||
+                    details.decision
+                      ?.decision_reason ||
+                    "No decision reason available."}
+
+                </p>
 
               </div>
 
-            )}
+              {/* AUDIT */}
 
-          </section>
+              {details.audit && (
 
-        )}
+                <div className="analysis-box">
+
+                  <h3>
+                    Audit Information
+                  </h3>
+
+                  {Object.entries(
+                    details.audit
+                  ).map(([key, value]) => (
+
+                    <p key={key}>
+
+                      <strong>
+                        {key.replace(
+                          /_/g,
+                          " "
+                        )}:
+                      </strong>{" "}
+
+                      {String(value)}
+
+                    </p>
+
+                  ))}
+
+                </div>
+
+              )}
+
+            </>
+
+          )}
+
+        </section>
 
       </main>
 
