@@ -1,0 +1,1726 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>ReconAI — AI Finance Controller</title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Inter, Arial, sans-serif;
+            background: #0a0d12;
+            color: #f5f7fa;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1450px;
+            margin: auto;
+            padding: 30px;
+        }
+
+        /* ================= HEADER ================= */
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 35px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .logo {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #6d5dfc, #a855f7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            font-weight: bold;
+            box-shadow: 0 8px 30px rgba(109, 93, 252, .25);
+        }
+
+        .brand h1 {
+            font-size: 24px;
+            letter-spacing: -0.5px;
+        }
+
+        .brand p {
+            color: #8b93a7;
+            font-size: 13px;
+            margin-top: 3px;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 15px;
+            border: 1px solid #242a36;
+            background: #11151d;
+            border-radius: 30px;
+            color: #b8c0d0;
+            font-size: 13px;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            background: #34d399;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #34d399;
+        }
+
+        /* ================= HERO ================= */
+
+        .hero {
+            margin-bottom: 28px;
+        }
+
+        .hero h2 {
+            font-size: 34px;
+            letter-spacing: -1px;
+            margin-bottom: 8px;
+        }
+
+        .hero p {
+            color: #8991a3;
+            font-size: 15px;
+        }
+
+        /* ================= CARDS ================= */
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 18px;
+            margin-bottom: 25px;
+        }
+
+        .card {
+            background: linear-gradient(145deg, #121720, #0e1219);
+            border: 1px solid #202632;
+            border-radius: 18px;
+            padding: 23px;
+            transition: .2s;
+        }
+
+        .card:hover {
+            transform: translateY(-3px);
+            border-color: #343c4d;
+        }
+
+        .card-label {
+            color: #8b93a7;
+            font-size: 13px;
+            margin-bottom: 13px;
+        }
+
+        .card-value {
+            font-size: 30px;
+            font-weight: 700;
+        }
+
+        .card-sub {
+            margin-top: 8px;
+            color: #6f788b;
+            font-size: 12px;
+        }
+
+        .green {
+            color: #34d399;
+        }
+
+        .yellow {
+            color: #fbbf24;
+        }
+
+        .red {
+            color: #f87171;
+        }
+
+        .purple {
+            color: #a78bfa;
+        }
+
+        /* ================= PANELS ================= */
+
+        .panel {
+            background: #10151d;
+            border: 1px solid #202632;
+            border-radius: 18px;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            padding: 20px 22px;
+            border-bottom: 1px solid #202632;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-header h3 {
+            font-size: 16px;
+        }
+
+        .panel-header span {
+            color: #737d91;
+            font-size: 12px;
+        }
+
+        /* ================= ANALYTICS ================= */
+
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            padding: 22px;
+        }
+
+        /* ================= MAIN GRID ================= */
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+        }
+
+        /* ================= FILTERS ================= */
+
+        .filters {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .search-box,
+        .filter-select {
+            background: #0a0d12;
+            border: 1px solid #2a3140;
+            color: #f5f7fa;
+            padding: 9px 12px;
+            border-radius: 9px;
+            outline: none;
+            font-size: 12px;
+        }
+
+        .search-box {
+            width: 170px;
+        }
+
+        .filter-select {
+            cursor: pointer;
+        }
+
+        .search-box:focus,
+        .filter-select:focus {
+            border-color: #6d5dfc;
+        }
+
+        .filter-select option {
+            background: #10151d;
+            color: #ffffff;
+        }
+
+        /* ================= TABLE ================= */
+
+        .table-wrap {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            padding: 15px 20px;
+            color: #727c90;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .7px;
+        }
+
+        td {
+            padding: 17px 20px;
+            border-top: 1px solid #1c222c;
+            font-size: 13px;
+        }
+
+        tr.exception-row {
+            cursor: pointer;
+            transition: .15s;
+        }
+
+        tr.exception-row:hover {
+            background: #151b25;
+        }
+
+        .payment-id {
+            font-weight: 600;
+            color: #c8cfff;
+        }
+
+        .badge {
+            display: inline-flex;
+            padding: 5px 9px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge-low {
+            background: rgba(52, 211, 153, .1);
+            color: #34d399;
+        }
+
+        .badge-medium {
+            background: rgba(251, 191, 36, .1);
+            color: #fbbf24;
+        }
+
+        .badge-high {
+            background: rgba(248, 113, 113, .1);
+            color: #f87171;
+        }
+
+        .decision {
+            font-weight: 600;
+        }
+
+        .decision-auto {
+            color: #34d399;
+        }
+
+        .decision-manual {
+            color: #fbbf24;
+        }
+
+        .decision-escalate {
+            color: #f87171;
+        }
+
+        /* ================= ANALYSIS ================= */
+
+        .analysis {
+            padding: 22px;
+        }
+
+        .selected {
+            color: #a78bfa;
+            font-size: 12px;
+            margin-bottom: 18px;
+        }
+
+        .analysis-title {
+            font-size: 21px;
+            margin-bottom: 8px;
+        }
+
+        .analysis-text {
+            color: #8991a3;
+            font-size: 13px;
+            line-height: 1.7;
+            margin-bottom: 20px;
+        }
+
+        .metric {
+            margin-bottom: 17px;
+        }
+
+        .metric-label {
+            display: flex;
+            justify-content: space-between;
+            color: #7d8799;
+            font-size: 12px;
+            margin-bottom: 7px;
+        }
+
+        .progress {
+            height: 7px;
+            background: #202632;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #6d5dfc, #a855f7);
+            border-radius: 10px;
+            transition: width .4s ease;
+        }
+
+        .action-box {
+            margin-top: 22px;
+            padding: 15px;
+            border-radius: 12px;
+            background: rgba(52, 211, 153, .07);
+            border: 1px solid rgba(52, 211, 153, .15);
+        }
+
+        .action-label {
+            color: #727c90;
+            font-size: 11px;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .action-value {
+            color: #34d399;
+            font-weight: 700;
+            font-size: 15px;
+        }
+
+        /* ================= AUDIT ================= */
+
+        .audit {
+            margin-top: 20px;
+            padding: 22px;
+        }
+
+        .audit-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #1c222c;
+            font-size: 12px;
+            gap: 20px;
+        }
+
+        .audit-item:last-child {
+            border-bottom: none;
+        }
+
+        .audit-label {
+            color: #737d91;
+        }
+
+        .audit-value {
+            color: #c5cad5;
+            text-align: right;
+        }
+
+        /* ================= FOOTER ================= */
+
+        .footer {
+            margin-top: 28px;
+            text-align: center;
+            color: #515a6c;
+            font-size: 11px;
+            padding-bottom: 15px;
+        }
+
+        /* ================= RESPONSIVE ================= */
+
+        @media(max-width: 1000px) {
+
+            .cards {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .analytics-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+
+        }
+
+        @media(max-width: 700px) {
+
+            .panel-header {
+                align-items: flex-start;
+                gap: 15px;
+                flex-direction: column;
+            }
+
+            .filters {
+                width: 100%;
+                flex-wrap: wrap;
+            }
+
+            .search-box {
+                width: 100%;
+            }
+
+        }
+
+        @media(max-width: 600px) {
+
+            .container {
+                padding: 18px;
+            }
+
+            .cards,
+            .analytics-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .hero h2 {
+                font-size: 27px;
+            }
+
+            .status {
+                display: none;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+<div class="container">
+
+
+    <!-- ================= HEADER ================= -->
+
+    <div class="header">
+
+        <div class="brand">
+
+            <div class="logo">
+                R
+            </div>
+
+            <div>
+
+                <h1>ReconAI</h1>
+
+                <p>
+                    AI Finance Controller
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <div class="status">
+
+            <span class="dot"></span>
+
+            Reconciliation Engine Online
+
+        </div>
+
+    </div>
+
+
+    <!-- ================= HERO ================= -->
+
+    <div class="hero">
+
+        <h2>
+            Financial Reconciliation Intelligence
+        </h2>
+
+        <p>
+            AI-powered monitoring, exception analysis
+            and decision automation.
+        </p>
+
+    </div>
+
+
+    <!-- ================= SUMMARY CARDS ================= -->
+
+    <div class="cards">
+
+
+        <div class="card">
+
+            <div class="card-label">
+                Total Transactions
+            </div>
+
+            <div
+                class="card-value purple"
+                id="total">
+
+                —
+
+            </div>
+
+            <div class="card-sub">
+                Transactions processed
+            </div>
+
+        </div>
+
+
+        <div class="card">
+
+            <div class="card-label">
+                Matched
+            </div>
+
+            <div
+                class="card-value green"
+                id="matched">
+
+                —
+
+            </div>
+
+            <div class="card-sub">
+                Successfully reconciled
+            </div>
+
+        </div>
+
+
+        <div class="card">
+
+            <div class="card-label">
+                Exceptions
+            </div>
+
+            <div
+                class="card-value yellow"
+                id="exceptions">
+
+                —
+
+            </div>
+
+            <div class="card-sub">
+                Require intelligent handling
+            </div>
+
+        </div>
+
+
+        <div class="card">
+
+            <div class="card-label">
+                Match Rate
+            </div>
+
+            <div
+                class="card-value green"
+                id="matchRate">
+
+                —
+
+            </div>
+
+            <div class="card-sub">
+                Reconciliation efficiency
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ================= AI DECISION ANALYTICS ================= -->
+
+    <div
+        class="panel"
+        style="margin-bottom:20px;">
+
+        <div class="panel-header">
+
+            <h3>
+                AI Decision Analytics
+            </h3>
+
+            <span>
+                Batch Evaluation
+            </span>
+
+        </div>
+
+
+        <div class="analytics-grid">
+
+
+            <div class="card">
+
+                <div class="card-label">
+                    Auto Resolved
+                </div>
+
+                <div
+                    class="card-value green"
+                    id="autoResolved">
+
+                    —
+
+                </div>
+
+                <div class="card-sub">
+                    Safe automation
+                </div>
+
+            </div>
+
+
+            <div class="card">
+
+                <div class="card-label">
+                    Manual Review
+                </div>
+
+                <div
+                    class="card-value yellow"
+                    id="manualReview">
+
+                    —
+
+                </div>
+
+                <div class="card-sub">
+                    Human verification
+                </div>
+
+            </div>
+
+
+            <div class="card">
+
+                <div class="card-label">
+                    Escalated
+                </div>
+
+                <div
+                    class="card-value red"
+                    id="escalated">
+
+                    —
+
+                </div>
+
+                <div class="card-sub">
+                    High-risk cases
+                </div>
+
+            </div>
+
+
+            <div class="card">
+
+                <div class="card-label">
+                    Unresolved
+                </div>
+
+                <div
+                    class="card-value purple"
+                    id="unresolved">
+
+                    —
+
+                </div>
+
+                <div class="card-sub">
+                    Requires attention
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ================= MAIN GRID ================= -->
+
+    <div class="main-grid">
+
+
+        <!-- ================= EXCEPTION MONITOR ================= -->
+
+        <div class="panel">
+
+
+            <div class="panel-header">
+
+                <h3>
+                    Exception Monitor
+                </h3>
+
+
+                <div class="filters">
+
+                    <input
+                        type="text"
+                        id="searchInput"
+                        class="search-box"
+                        placeholder="Search payment or issue..."
+                    >
+
+
+                    <select
+                        id="riskFilter"
+                        class="filter-select">
+
+                        <option value="ALL">
+                            All Risk
+                        </option>
+
+                        <option value="LOW">
+                            Low
+                        </option>
+
+                        <option value="MEDIUM">
+                            Medium
+                        </option>
+
+                        <option value="HIGH">
+                            High
+                        </option>
+
+                    </select>
+
+
+                    <span id="exceptionCount">
+                        Loading...
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <div class="table-wrap">
+
+                <table>
+
+                    <thead>
+
+                        <tr>
+
+                            <th>
+                                Payment
+                            </th>
+
+                            <th>
+                                Issue
+                            </th>
+
+                            <th>
+                                Risk
+                            </th>
+
+                            <th>
+                                Decision
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+
+                    <tbody
+                        id="exceptionTable">
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+
+        <!-- ================= AI ANALYSIS ================= -->
+
+        <div class="panel">
+
+
+            <div class="panel-header">
+
+                <h3>
+                    AI Analysis
+                </h3>
+
+                <span>
+                    Decision Intelligence
+                </span>
+
+            </div>
+
+
+            <div class="analysis">
+
+
+                <div
+                    class="selected"
+                    id="selectedPayment">
+
+                    Select an exception
+
+                </div>
+
+
+                <div
+                    class="analysis-title"
+                    id="analysisTitle">
+
+                    No exception selected
+
+                </div>
+
+
+                <div
+                    class="analysis-text"
+                    id="analysisText">
+
+                    Click an exception from the table
+                    to inspect the AI analysis.
+
+                </div>
+
+
+                <div class="metric">
+
+                    <div class="metric-label">
+
+                        <span>
+                            AI Confidence
+                        </span>
+
+                        <span id="confidence">
+                            —
+                        </span>
+
+                    </div>
+
+
+                    <div class="progress">
+
+                        <div
+                            class="progress-fill"
+                            id="confidenceBar">
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="action-box">
+
+                    <div class="action-label">
+                        Recommended Action
+                    </div>
+
+                    <div
+                        class="action-value"
+                        id="action">
+
+                        —
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ================= AUDIT TRAIL ================= -->
+
+    <div class="panel audit">
+
+
+        <div class="panel-header">
+
+            <h3>
+                Audit Trail
+            </h3>
+
+            <span>
+                Decision History
+            </span>
+
+        </div>
+
+
+        <div id="auditContent">
+
+            <div class="audit-item">
+
+                <span class="audit-label">
+                    Select an exception
+                </span>
+
+                <span class="audit-value">
+                    —
+                </span>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ================= FOOTER ================= -->
+
+    <div class="footer">
+
+        ReconAI • AI Finance Controller •
+        Built for Razorpay AI Buildathon
+
+    </div>
+
+</div>
+
+
+<script>
+
+
+/* =========================
+   API
+========================= */
+
+const API =
+    "http://127.0.0.1:8000";
+
+
+/* =========================
+   GLOBAL EXCEPTIONS
+========================= */
+
+let allExceptions = [];
+
+
+/* =========================
+   SUMMARY
+========================= */
+
+async function loadSummary() {
+
+    try {
+
+        const response =
+            await fetch(
+                `${API}/summary`
+            );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Summary API failed"
+            );
+
+        }
+
+
+        const data =
+            await response.json();
+
+
+        document.getElementById(
+            "total"
+        ).innerText =
+            data.total_transactions;
+
+
+        document.getElementById(
+            "matched"
+        ).innerText =
+            data.matched;
+
+
+        document.getElementById(
+            "exceptions"
+        ).innerText =
+            data.exceptions;
+
+
+        document.getElementById(
+            "matchRate"
+        ).innerText =
+            data.match_rate + "%";
+
+
+        document.getElementById(
+            "exceptionCount"
+        ).innerText =
+            data.exceptions +
+            " detected";
+
+    }
+
+
+    catch(error) {
+
+        console.error(
+            "Summary error:",
+            error
+        );
+
+
+        document.getElementById(
+            "exceptionCount"
+        ).innerText =
+            "Backend unavailable";
+
+    }
+
+}
+
+
+/* =========================
+   LOAD EXCEPTIONS
+========================= */
+
+async function loadExceptions() {
+
+    try {
+
+        const response =
+            await fetch(
+                `${API}/exceptions`
+            );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Exceptions API failed"
+            );
+
+        }
+
+
+        allExceptions =
+            await response.json();
+
+
+        renderExceptions();
+
+    }
+
+
+    catch(error) {
+
+        console.error(
+            "Exception loading error:",
+            error
+        );
+
+
+        document.getElementById(
+            "exceptionTable"
+        ).innerHTML = `
+
+            <tr>
+
+                <td colspan="4">
+
+                    Unable to load exceptions.
+
+                </td>
+
+            </tr>
+
+        `;
+
+    }
+
+}
+
+
+/* =========================
+   RENDER EXCEPTIONS
+========================= */
+
+function renderExceptions() {
+
+
+    const searchInput =
+        document.getElementById(
+            "searchInput"
+        );
+
+
+    const riskFilter =
+        document.getElementById(
+            "riskFilter"
+        );
+
+
+    const search =
+        searchInput.value
+            .trim()
+            .toLowerCase();
+
+
+    const selectedRisk =
+        riskFilter.value;
+
+
+    const filtered =
+        allExceptions.filter(
+            exception => {
+
+
+                const paymentId =
+                    String(
+                        exception.payment_id || ""
+                    ).toLowerCase();
+
+
+                const reason =
+                    String(
+                        exception.reason || ""
+                    ).toLowerCase();
+
+
+                const risk =
+                    exception.risk_level ||
+                    "HIGH";
+
+
+                const matchesSearch =
+                    paymentId.includes(search) ||
+                    reason.includes(search);
+
+
+                const matchesRisk =
+                    selectedRisk === "ALL" ||
+                    risk === selectedRisk;
+
+
+                return (
+                    matchesSearch &&
+                    matchesRisk
+                );
+
+            }
+        );
+
+
+    const table =
+        document.getElementById(
+            "exceptionTable"
+        );
+
+
+    table.innerHTML = "";
+
+
+    document.getElementById(
+        "exceptionCount"
+    ).innerText =
+        filtered.length +
+        " shown";
+
+
+    filtered
+        .slice(0, 50)
+        .forEach(exception => {
+
+
+            const row =
+                document.createElement(
+                    "tr"
+                );
+
+
+            row.className =
+                "exception-row";
+
+
+            const risk =
+                exception.risk_level ||
+                "HIGH";
+
+
+            const decision =
+                exception.decision ||
+                "MANUAL_REVIEW";
+
+
+            let decisionClass =
+                "decision";
+
+
+            if (
+                decision ===
+                "AUTO_RESOLVE"
+            ) {
+
+                decisionClass +=
+                    " decision-auto";
+
+            }
+
+
+            else if (
+                decision ===
+                "MANUAL_REVIEW"
+            ) {
+
+                decisionClass +=
+                    " decision-manual";
+
+            }
+
+
+            else if (
+                decision ===
+                "ESCALATE"
+            ) {
+
+                decisionClass +=
+                    " decision-escalate";
+
+            }
+
+
+            row.innerHTML = `
+
+                <td>
+
+                    <span class="payment-id">
+
+                        ${exception.payment_id}
+
+                    </span>
+
+                </td>
+
+
+                <td>
+
+                    ${exception.reason}
+
+                </td>
+
+
+                <td>
+
+                    <span
+                        class="badge badge-${risk.toLowerCase()}">
+
+                        ${risk}
+
+                    </span>
+
+                </td>
+
+
+                <td class="${decisionClass}">
+
+                    ${decision}
+
+                </td>
+
+            `;
+
+
+            row.onclick = function() {
+
+                loadAnalysis(
+                    exception.payment_id
+                );
+
+            };
+
+
+            table.appendChild(row);
+
+        });
+
+
+    if (
+        filtered.length === 0
+    ) {
+
+        table.innerHTML = `
+
+            <tr>
+
+                <td colspan="4">
+
+                    No matching exceptions found.
+
+                </td>
+
+            </tr>
+
+        `;
+
+    }
+
+}
+
+
+/* =========================
+   AI ANALYSIS
+========================= */
+
+async function loadAnalysis(
+    paymentId
+) {
+
+    try {
+
+        const response =
+            await fetch(
+                `${API}/analyze/${paymentId}`
+            );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Analysis API failed"
+            );
+
+        }
+
+
+        const data =
+            await response.json();
+
+
+        if (
+            data.status ===
+            "MATCHED"
+        ) {
+
+            return;
+
+        }
+
+
+        const analysis =
+            data.ai_analysis;
+
+
+        const decision =
+            data.decision;
+
+
+        const audit =
+            data.audit;
+
+
+        const reconciliation =
+            data.reconciliation;
+
+
+        document.getElementById(
+            "selectedPayment"
+        ).innerText =
+            paymentId;
+
+
+        document.getElementById(
+            "analysisTitle"
+        ).innerText =
+            reconciliation.reason;
+
+
+        document.getElementById(
+            "analysisText"
+        ).innerHTML = `
+
+            <strong>
+                What happened:
+            </strong>
+
+            <br>
+
+            ${analysis.what_happened}
+
+            <br><br>
+
+            <strong>
+                Possible cause:
+            </strong>
+
+            <br>
+
+            ${analysis.possible_cause}
+
+        `;
+
+
+        const confidence =
+            Math.round(
+                analysis.confidence * 100
+            );
+
+
+        document.getElementById(
+            "confidence"
+        ).innerText =
+            confidence + "%";
+
+
+        document.getElementById(
+            "confidenceBar"
+        ).style.width =
+            confidence + "%";
+
+
+        document.getElementById(
+            "action"
+        ).innerText =
+            decision.decision;
+
+
+        document.getElementById(
+            "auditContent"
+        ).innerHTML = `
+
+            <div class="audit-item">
+
+                <span class="audit-label">
+                    Payment ID
+                </span>
+
+                <span class="audit-value">
+                    ${audit.payment_id}
+                </span>
+
+            </div>
+
+
+            <div class="audit-item">
+
+                <span class="audit-label">
+                    Exception
+                </span>
+
+                <span class="audit-value">
+                    ${audit.exception_reason}
+                </span>
+
+            </div>
+
+
+            <div class="audit-item">
+
+                <span class="audit-label">
+                    AI Risk
+                </span>
+
+                <span class="audit-value">
+                    ${audit.ai_risk}
+                </span>
+
+            </div>
+
+
+            <div class="audit-item">
+
+                <span class="audit-label">
+                    AI Confidence
+                </span>
+
+                <span class="audit-value">
+                    ${confidence}%
+                </span>
+
+            </div>
+
+
+            <div class="audit-item">
+
+                <span class="audit-label">
+                    Recommended Action
+                </span>
+
+                <span class="audit-value">
+                    ${audit.recommended_action}
+                </span>
+
+            </div>
+
+
+            <div class="audit-item">
+
+                <span class="audit-label">
+                    Final Decision
+                </span>
+
+                <span class="audit-value">
+                    ${audit.final_decision}
+                </span>
+
+            </div>
+
+
+            <div class="audit-item">
+
+                <span class="audit-label">
+                    Decision Reason
+                </span>
+
+                <span class="audit-value">
+                    ${audit.decision_reason}
+                </span>
+
+            </div>
+
+
+            <div class="audit-item">
+
+                <span class="audit-label">
+                    Timestamp
+                </span>
+
+                <span class="audit-value">
+                    ${audit.timestamp}
+                </span>
+
+            </div>
+
+        `;
+
+    }
+
+
+    catch(error) {
+
+        console.error(
+            "Analysis error:",
+            error
+        );
+
+    }
+
+}
+
+
+/* =========================
+   ANALYTICS
+========================= */
+
+async function loadAnalytics() {
+
+    try {
+
+        const response =
+            await fetch(
+                `${API}/analytics`
+            );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Analytics API failed"
+            );
+
+        }
+
+
+        const data =
+            await response.json();
+
+
+        document.getElementById(
+            "autoResolved"
+        ).innerText =
+            data.auto_resolved;
+
+
+        document.getElementById(
+            "manualReview"
+        ).innerText =
+            data.manual_review;
+
+
+        document.getElementById(
+            "escalated"
+        ).innerText =
+            data.escalated;
+
+
+        document.getElementById(
+            "unresolved"
+        ).innerText =
+            data.unresolved;
+
+    }
+
+
+    catch(error) {
+
+        console.error(
+            "Analytics error:",
+            error
+        );
+
+    }
+
+}
+
+
+/* =========================
+   SEARCH
+========================= */
+
+document.getElementById(
+    "searchInput"
+).addEventListener(
+    "input",
+    renderExceptions
+);
+
+
+/* =========================
+   RISK FILTER
+========================= */
+
+document.getElementById(
+    "riskFilter"
+).addEventListener(
+    "change",
+    renderExceptions
+);
+
+
+/* =========================
+   START APPLICATION
+========================= */
+
+loadSummary();
+
+loadExceptions();
+
+loadAnalytics();
+
+</script>
+
+
+</body>
+
+</html>
