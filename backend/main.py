@@ -607,9 +607,7 @@ def get_summary(
 
 @app.get("/analytics")
 def get_analytics(
-    current_user=Depends(
-        get_current_user
-    )
+    current_user: dict = Depends(require_admin)
 ):
 
     results = reconcile()
