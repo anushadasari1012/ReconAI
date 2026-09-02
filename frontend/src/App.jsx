@@ -6,6 +6,7 @@ const API_URL = "https://reconai-4kr7.onrender.com";
 function App() {
   const [summary, setSummary] = useState(null);
   const [analytics, setAnalytics] = useState(null);
+  const [exceptions, setExceptions] = useState([]);
   const [health, setHealth] = useState(null);
   const [error, setError] = useState("");
 
@@ -16,16 +17,19 @@ function App() {
           healthResponse,
           summaryResponse,
           analyticsResponse,
+          exceptionsResponse,
         ] = await Promise.all([
           fetch(`${API_URL}/health`),
           fetch(`${API_URL}/summary`),
           fetch(`${API_URL}/analytics`),
+          fetch(`${API_URL}/exceptions`),
         ]);
 
         if (
           !healthResponse.ok ||
           !summaryResponse.ok ||
-          !analyticsResponse.ok
+          !analyticsResponse.ok ||
+          !exceptionsResponse.ok
         ) {
           throw new Error("Could not reach the backend");
         }
@@ -33,10 +37,12 @@ function App() {
         const healthData = await healthResponse.json();
         const summaryData = await summaryResponse.json();
         const analyticsData = await analyticsResponse.json();
+        const exceptionsData = await exceptionsResponse.json();
 
         setHealth(healthData);
         setSummary(summaryData);
         setAnalytics(analyticsData);
+        setExceptions(exceptionsData);
       } catch (err) {
         console.error(err);
         setError("We couldn't reach the server. Please try again.");
@@ -138,8 +144,6 @@ function App() {
             <div className="loading">Loading analytics...</div>
           ) : (
             <>
-
-              {/* Analytics Cards */}
               <div className="analytics-cards">
 
                 <div className="analytics-card">
@@ -169,8 +173,6 @@ function App() {
 
               </div>
 
-
-              {/* Exception Breakdown */}
               <div className="analytics-panel">
 
                 <h2>Exception Breakdown</h2>
@@ -191,7 +193,6 @@ function App() {
                   </div>
                 </div>
 
-
                 <div className="bar-row">
                   <div className="bar-label">
                     <span>Manual Review</span>
@@ -208,7 +209,6 @@ function App() {
                   </div>
                 </div>
 
-
                 <div className="bar-row">
                   <div className="bar-label">
                     <span>Escalated</span>
@@ -224,7 +224,6 @@ function App() {
                     ></div>
                   </div>
                 </div>
-
 
                 <div className="bar-row">
                   <div className="bar-label">
@@ -243,8 +242,104 @@ function App() {
                 </div>
 
               </div>
-
             </>
+          )}
+        </section>
+
+
+        {/* Exceptions */}
+        <section className="exceptions-section">
+
+          <div className="section-heading">
+            <div>
+              <h2>Exceptions</h2>
+              <p>Transactions requiring attention</p>
+            </div>
+
+            <div className="exception-count">
+              {exceptions.length} Exceptions
+            </div>
+          </div>
+
+          {!exceptions.length ? (
+            <div className="loading">
+              Loading exceptions...
+            </div>
+          ) : (
+            <div className="table-container">
+
+              <table className="exceptions-table">
+
+                <thead>
+                  <tr>
+                    <th>Payment ID</th>
+                    <th>Reason</th>
+                    <th>Expected Amount</th>
+                    <th>Settled Amount</th>
+                    <th>Risk</th>
+                    <th>AI Confidence</th>
+                    <th>Decision</th>
+                    <th>Recommended Action</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {exceptions.map((exception, index) => (
+                    <tr key={`${exception.payment_id}-${index}`}>
+
+                      <td className="payment-id">
+                        {exception.payment_id}
+                      </td>
+
+                      <td>
+                        {exception.reason}
+                      </td>
+
+                      <td>
+                        ₹{exception.expected_amount}
+                      </td>
+
+                      <td>
+                        {exception.settled_amount !== null &&
+                        exception.settled_amount !== undefined
+                          ? `₹${exception.settled_amount}`
+                          : "—"}
+                      </td>
+
+                      <td>
+                        <span
+                          className={`risk-badge ${String(
+                            exception.risk_level || ""
+                          ).toLowerCase()}`}
+                        >
+                          {exception.risk_level || "N/A"}
+                        </span>
+                      </td>
+
+                      <td>
+                        {exception.ai_confidence !== null &&
+                        exception.ai_confidence !== undefined
+                          ? `${(exception.ai_confidence * 100).toFixed(0)}%`
+                          : "—"}
+                      </td>
+
+                      <td>
+                        <span className="decision-badge">
+                          {exception.decision || "N/A"}
+                        </span>
+                      </td>
+
+                      <td>
+                        {exception.recommended_action || "—"}
+                      </td>
+
+                    </tr>
+                  ))}
+                </tbody>
+
+              </table>
+
+            </div>
           )}
 
         </section>
