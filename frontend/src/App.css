@@ -1425,3 +1425,8 @@ padding: 36px 46px 30px;
     gap: 15px;
   }
 }
+
+/* ALL DASHBOARD HEADINGS WHITE */
+.dashboard h2 {
+  color: #ffffff !important;
+}
