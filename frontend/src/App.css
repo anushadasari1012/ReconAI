@@ -1432,6 +1432,7 @@ padding: 36px 46px 30px;
 }
 
 /* BLACK HEADINGS */
+.overview-section h3,
 .analytics-section h3,
 .reports-section h3 {
   color: #000000 !important;
