@@ -1430,3 +1430,19 @@ padding: 36px 46px 30px;
 .dashboard h2 {
   color: #ffffff !important;
 }
+
+/* BLACK ANALYTICS SECTIONS */
+
+.exceptions-section {
+  background: #000000 !important;
+}
+
+.reports-section {
+  background: #000000 !important;
+}
+
+/* Keep headings visible */
+.exceptions-section h2,
+.reports-section h2 {
+  color: #ffffff !important;
+}
