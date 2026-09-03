@@ -892,9 +892,10 @@ function App() {
 
               <div className="summary">
 
-                <h2>
+                <h3
+                >
                   Reconciliation Summary
-                </h2>
+                </h3>
 
                 <div className="progress-container">
 
@@ -1009,9 +1010,9 @@ function App() {
 
                 <div className="analytics-panel">
 
-                  <h2>
+                  <h3>
                     Exception Breakdown
-                  </h2>
+                  </h3>
 
                   {[
                     [
@@ -1184,9 +1185,9 @@ function App() {
 
                 <div className="analytics-panel">
 
-                  <h2>
+                  <h3>
                     Reconciliation Performance
-                  </h2>
+                  </h3>
 
                   <div className="bar-row">
 
