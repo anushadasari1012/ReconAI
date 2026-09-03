@@ -1431,18 +1431,8 @@ padding: 36px 46px 30px;
   color: #ffffff !important;
 }
 
-/* BLACK ANALYTICS SECTIONS */
-
-.exceptions-section {
-  background: #000000 !important;
-}
-
-.reports-section {
-  background: #000000 !important;
-}
-
-/* Keep headings visible */
-.exceptions-section h2,
-.reports-section h2 {
-  color: #ffffff !important;
+/* BLACK HEADINGS */
+.analytics-section h3,
+.reports-section h3 {
+  color: #000000 !important;
 }
