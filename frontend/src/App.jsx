@@ -84,7 +84,9 @@ function App() {
       }
 
       if (!data.access_token) {
-        throw new Error("Login succeeded but no token was received.");
+        throw new Error(
+          "Login succeeded but no token was received."
+        );
       }
 
       localStorage.setItem(
@@ -182,28 +184,18 @@ function App() {
 
         const data = await response.json();
 
-        /*
-          Backend /me response:
-
-          {
-            "authenticated": true,
-            "user": {
-              "username": "...",
-              "role": "...",
-              "name": "..."
-            }
-          }
-
-          Therefore we use data.user.
-        */
-
         if (!data.user) {
-          throw new Error("User information was not returned.");
+          throw new Error(
+            "User information was not returned."
+          );
         }
 
         setUser(data.user);
       } catch (err) {
-        console.error("User verification error:", err);
+        console.error(
+          "User verification error:",
+          err
+        );
 
         localStorage.removeItem("reconai_token");
 
@@ -227,21 +219,6 @@ function App() {
 
       try {
         setError("");
-
-        /*
-          Admin:
-          - summary
-          - analytics
-          - exceptions
-          - reconciliation
-
-          Employee:
-          - summary
-          - exceptions
-          - reconciliation
-
-          Analytics is loaded only for ADMIN.
-        */
 
         const healthPromise = fetch(
           `${API_URL}/health`
@@ -416,7 +393,6 @@ function App() {
 
       setDetails(data);
 
-      // Scroll to investigation panel
       setTimeout(() => {
         document
           .getElementById("investigation")
@@ -540,56 +516,102 @@ function App() {
 
   if (!token) {
     return (
-      <div className="login-container">
+      <div className="login-page">
 
-        <div className="login-box">
+        {/* Background Decorations */}
+        <div className="login-decoration decoration-1"></div>
+        <div className="login-decoration decoration-2"></div>
+        <div className="login-decoration decoration-3"></div>
 
-          <h1>
-            ReconAI
-          </h1>
+        <div className="login-card">
 
-          <p className="login-subtitle">
-            Payment Reconciliation System
-          </p>
+          {/* BRAND */}
+          <div className="login-brand">
 
-          <form onSubmit={handleLogin}>
+            <div className="recon-logo">
+              R
+            </div>
 
-            <label>
-              Username
-            </label>
+            <div>
+              <h1>ReconAI</h1>
 
-            <input
-              type="text"
-              value={username}
-              onChange={(e) =>
-                setUsername(e.target.value)
-              }
-              placeholder="Enter username"
-              autoComplete="username"
-              required
-            />
+              <p>
+                Payment Reconciliation System
+              </p>
+            </div>
 
-            <label>
-              Password
-            </label>
+          </div>
 
-            <input
-              type="password"
-              value={password}
-              onChange={(e) =>
-                setPassword(e.target.value)
-              }
-              placeholder="Enter password"
-              autoComplete="current-password"
-              required
-            />
+          {/* LOGIN FORM */}
+          <form
+            onSubmit={handleLogin}
+            className="login-form"
+          >
 
+            {/* Username */}
+            <div className="input-group">
+
+              <label>
+                Username
+              </label>
+
+              <div className="input-wrapper">
+
+                <span className="input-icon">
+                  👤
+                </span>
+
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) =>
+                    setUsername(e.target.value)
+                  }
+                  placeholder="Enter username"
+                  autoComplete="username"
+                  required
+                />
+
+              </div>
+
+            </div>
+
+            {/* Password */}
+            <div className="input-group">
+
+              <label>
+                Password
+              </label>
+
+              <div className="input-wrapper">
+
+                <span className="input-icon">
+                  🔒
+                </span>
+
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) =>
+                    setPassword(e.target.value)
+                  }
+                  placeholder="Enter password"
+                  autoComplete="current-password"
+                  required
+                />
+
+              </div>
+
+            </div>
+
+            {/* Error */}
             {loginError && (
               <div className="login-error">
                 {loginError}
               </div>
             )}
 
+            {/* Login Button */}
             <button
               type="submit"
               className="login-button"
@@ -602,50 +624,47 @@ function App() {
 
           </form>
 
-          {/* =========================
-              DEMO ACCOUNTS
-              ========================= */}
+          {/* SECURITY */}
+          <div className="security-section">
 
-          <div className="demo-login">
+            <div className="security-line">
 
-            <p>
-              <strong>
-                Demo Accounts
-              </strong>
-            </p>
+              <span></span>
 
-            <div className="demo-account">
+              <div>
+                🛡️ Secure Login
+              </div>
 
-              <strong>
-                Admin
-              </strong>
-
-              <p>
-                Username: admin
-              </p>
-
-              <p>
-                Password: admin123
-              </p>
+              <span></span>
 
             </div>
 
-            <div className="demo-account">
+            <div className="security-items">
 
-              <strong>
-                Employee
-              </strong>
+              <div>
+                <span>🛡️</span>
+                <p>Secure</p>
+              </div>
 
-              <p>
-                Username: employee
-              </p>
+              <div>
+                <span>✓</span>
+                <p>Reliable</p>
+              </div>
 
-              <p>
-                Password: employee123
-              </p>
+              <div>
+                <span>🧠</span>
+                <p>Intelligent</p>
+              </div>
 
             </div>
 
+          </div>
+
+        
+
+          {/* FOOTER */}
+          <div className="login-footer">
+            ReconAI © 2026 All rights reserved.
           </div>
 
         </div>
@@ -661,11 +680,9 @@ function App() {
   if (!user) {
     return (
       <div className="loading-screen">
-
         <div className="loading">
           Authenticating...
         </div>
-
       </div>
     );
   }
@@ -724,7 +741,6 @@ function App() {
       <header className="header">
 
         <div>
-
           <h1>
             ReconAI
           </h1>
@@ -732,7 +748,6 @@ function App() {
           <p>
             Payment Reconciliation Dashboard
           </p>
-
         </div>
 
         <div className="header-right">
@@ -769,6 +784,43 @@ function App() {
 
       </header>
 
+      {/* =========================
+          FLOATING UP / DOWN BUTTONS
+          ========================= */}
+
+      <div className="scroll-buttons">
+
+        <button
+          type="button"
+          onClick={() =>
+            window.scrollTo({
+              top: 0,
+              behavior: "smooth",
+            })
+          }
+          title="Go to Top"
+          aria-label="Go to Top"
+        >
+          ↑
+        </button>
+
+        <button
+          type="button"
+          onClick={() =>
+            window.scrollTo({
+              top: document.documentElement
+                .scrollHeight,
+              behavior: "smooth",
+            })
+          }
+          title="Go to Bottom"
+          aria-label="Go to Bottom"
+        >
+          ↓
+        </button>
+
+      </div>
+
       <main>
 
         {/* =========================
@@ -797,7 +849,6 @@ function App() {
               <div className="cards">
 
                 <div className="card">
-
                   <p>
                     Total Transactions
                   </p>
@@ -805,11 +856,9 @@ function App() {
                   <h3>
                     {summary.total_transactions ?? 0}
                   </h3>
-
                 </div>
 
                 <div className="card">
-
                   <p>
                     Matched
                   </p>
@@ -817,11 +866,9 @@ function App() {
                   <h3>
                     {summary.matched ?? 0}
                   </h3>
-
                 </div>
 
                 <div className="card">
-
                   <p>
                     Exceptions
                   </p>
@@ -829,11 +876,9 @@ function App() {
                   <h3>
                     {summary.exceptions ?? 0}
                   </h3>
-
                 </div>
 
                 <div className="card">
-
                   <p>
                     Match Rate
                   </p>
@@ -841,7 +886,6 @@ function App() {
                   <h3>
                     {summary.match_rate ?? 0}%
                   </h3>
-
                 </div>
 
               </div>
