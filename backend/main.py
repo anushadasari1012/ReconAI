@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-
+from fastapi import UploadFile, File
 from pydantic import BaseModel
 
 import jwt
@@ -12,7 +12,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 
 from database import User, get_db, SessionLocal
-from reconciliation import reconcile
+from reconciliation import reconcile, load_data
 from agent import ai_investigator
 from decision_engine import make_decision
 from audit import create_audit_record
@@ -506,7 +506,100 @@ def run_reconciliation(
         "results": results
     }
 
+# =========================================================
+# SOURCE DATA
+# =========================================================
 
+@app.get("/source-data")
+def get_source_data(
+    current_user=Depends(
+        get_current_user
+    )
+):
+
+    payments, settlements = load_data()
+
+    return {
+
+        "payment_source": "data/payments.csv",
+
+        "settlement_source": "data/settlements.csv",
+
+        "payment_records": int(
+            len(payments)
+        ),
+
+        "settlement_records": int(
+            len(settlements)
+        ),
+
+        "payment_preview":
+            payments.head(5)
+            .fillna("")
+            .to_dict(
+                orient="records"
+            ),
+
+        "settlement_preview":
+            settlements.head(5)
+            .fillna("")
+            .to_dict(
+                orient="records"
+            )
+    }
+
+# =========================================================
+# SOURCE DATA UPLOAD
+# =========================================================
+
+@app.post("/upload-source-data")
+async def upload_source_data(
+    payment_file: UploadFile = File(...),
+    settlement_file: UploadFile = File(...),
+    current_user=Depends(get_current_user)
+):
+    """
+    Upload payment and settlement CSV datasets.
+    Both files are required before the dashboard can be used.
+    """
+
+    if not payment_file.filename.lower().endswith(".csv"):
+        raise HTTPException(
+            status_code=400,
+            detail="Payment file must be a CSV file."
+        )
+
+    if not settlement_file.filename.lower().endswith(".csv"):
+        raise HTTPException(
+            status_code=400,
+            detail="Settlement file must be a CSV file."
+        )
+
+    BASE_DIR = Path(__file__).resolve().parent
+    DATA_DIR = BASE_DIR.parent / "data"
+
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+    payments_path = DATA_DIR / "payments.csv"
+    settlements_path = DATA_DIR / "settlements.csv"
+
+    payment_content = await payment_file.read()
+    settlement_content = await settlement_file.read()
+
+    payments_path.write_bytes(payment_content)
+    settlements_path.write_bytes(settlement_content)
+
+    return {
+        "message": "Source datasets uploaded successfully.",
+        "payment_file": "data/payments.csv",
+        "settlement_file": "data/settlements.csv",
+        "payment_records": len(
+            pd.read_csv(payments_path)
+        ),
+        "settlement_records": len(
+            pd.read_csv(settlements_path)
+        )
+    }
 # =========================================================
 # ANALYZE PAYMENT
 # =========================================================
