@@ -1971,56 +1971,101 @@ function App() {
 
               {/* AI ANALYSIS */}
 
-              <div className="analysis-box">
+<div className="analysis-box">
 
-                <h3>
-                  AI Analysis
-                </h3>
+  <h3>
+    AI Analysis
+  </h3>
 
-                <p>
+  <p>
+    <strong>
+      AI Method:
+    </strong>{" "}
+    {details.ai_analysis?.ai_method ||
+      "N/A"}
+  </p>
 
-                  <strong>
-                    Risk Level:
-                  </strong>{" "}
+  <p>
+    <strong>
+      Anomaly Status:
+    </strong>{" "}
+    {details.ai_analysis?.is_anomalous
+      ? "ANOMALY DETECTED"
+      : "NORMAL"}
+  </p>
 
-                  {details.ai_analysis
-                    ?.risk_level ||
-                    "N/A"}
+  <p>
+    <strong>
+      Anomaly Confidence:
+    </strong>{" "}
+    {details.ai_analysis?.anomaly_confidence !==
+      null &&
+    details.ai_analysis?.anomaly_confidence !==
+      undefined
+      ? `${(
+          details.ai_analysis.anomaly_confidence *
+          100
+        ).toFixed(1)}%`
+      : "N/A"}
+  </p>
 
-                </p>
+  <p>
+    <strong>
+      Anomaly Score:
+    </strong>{" "}
+    {details.ai_analysis?.anomaly_score !==
+      null &&
+    details.ai_analysis?.anomaly_score !==
+      undefined
+      ? details.ai_analysis.anomaly_score
+      : "N/A"}
+  </p>
 
-                <p>
+  <p>
+    <strong>
+      Risk Level:
+    </strong>{" "}
+    {details.ai_analysis?.risk_level ||
+      "N/A"}
+  </p>
 
-                  <strong>
-                    AI Confidence:
-                  </strong>{" "}
+  <p>
+    <strong>
+      Difference Percentage:
+    </strong>{" "}
+    {details.ai_analysis?.difference_percentage !==
+      null &&
+    details.ai_analysis?.difference_percentage !==
+      undefined
+      ? `${details.ai_analysis.difference_percentage}%`
+      : "N/A"}
+  </p>
 
-                  {details.ai_analysis
-                    ?.confidence !== null &&
-                  details.ai_analysis
-                    ?.confidence !==
-                    undefined
-                    ? `${(
-                        details.ai_analysis.confidence *
-                        100
-                      ).toFixed(1)}%`
-                    : "N/A"}
+  <p>
+    <strong>
+      Possible Cause:
+    </strong>{" "}
+    {details.ai_analysis?.possible_cause ||
+      "N/A"}
+  </p>
 
-                </p>
+  <p>
+    <strong>
+      AI Explanation:
+    </strong>{" "}
+    {details.ai_analysis?.explanation ||
+      "N/A"}
+  </p>
 
-                <p>
+  <p>
+    <strong>
+      Recommended Action:
+    </strong>{" "}
+    {details.ai_analysis?.recommended_action ||
+      "N/A"}
+  </p>
 
-                  <strong>
-                    Recommended Action:
-                  </strong>{" "}
-
-                  {details.ai_analysis
-                    ?.recommended_action ||
-                    "N/A"}
-
-                </p>
-
-              </div>
+</div>
 
               {/* DECISION */}
 

@@ -12,11 +12,11 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 
 from database import User, get_db, SessionLocal
-
 from reconciliation import reconcile
-from agent import analyze_exception
+from agent import ai_investigator
 from decision_engine import make_decision
 from audit import create_audit_record
+
 
 
 # =========================================================
@@ -25,7 +25,7 @@ from audit import create_audit_record
 
 app = FastAPI(
     title="ReconAI",
-    description="AI Finance Controller",
+    description="AI-Assisted Payment Reconciliation System",
     version="1.0.0"
 )
 
@@ -272,6 +272,59 @@ def require_admin(
 
 
 # =========================================================
+# AI INVESTIGATION ADAPTER
+# =========================================================
+
+def analyze_exception(exception):
+
+    """
+    Connects the reconciliation result to the new
+    ML-based AI investigation engine.
+
+    Keeps the 'confidence' field for compatibility
+    with the existing decision engine.
+    """
+
+    expected_amount = exception.get(
+        "expected_amount",
+        0
+    )
+
+    settled_amount = exception.get(
+        "settled_amount",
+        0
+    )
+
+    reason = exception.get(
+        "reason",
+        ""
+    )
+
+    date_difference_days = exception.get(
+        "date_difference_days",
+        0
+    )
+
+    analysis = ai_investigator.analyze(
+        expected_amount=expected_amount,
+        settled_amount=settled_amount,
+        reason=reason,
+        date_difference_days=date_difference_days
+    )
+
+    # -----------------------------------------------------
+    # Backward compatibility
+    # -----------------------------------------------------
+
+    analysis["confidence"] = analysis.get(
+        "anomaly_confidence",
+        0
+    )
+
+    return analysis
+
+
+# =========================================================
 # ROOT
 # =========================================================
 
@@ -487,10 +540,10 @@ def analyze_payment(
 
     if exception is None:
 
-        return {
-            "error": "Payment not found",
-            "payment_id": payment_id
-        }
+        raise HTTPException(
+            status_code=404,
+            detail=f"Payment {payment_id} not found"
+        )
 
     # -----------------------------------------------------
     # Already matched
@@ -534,6 +587,10 @@ def analyze_payment(
         analysis,
         decision
     )
+
+    # -----------------------------------------------------
+    # Final response
+    # -----------------------------------------------------
 
     return {
         "payment_id": payment_id,
@@ -761,9 +818,34 @@ def get_exceptions(
                     "confidence"
                 ),
 
+            "anomaly_confidence":
+                analysis.get(
+                    "anomaly_confidence"
+                ),
+
+            "anomaly_score":
+                analysis.get(
+                    "anomaly_score"
+                ),
+
+            "is_anomalous":
+                analysis.get(
+                    "is_anomalous"
+                ),
+
+            "possible_cause":
+                analysis.get(
+                    "possible_cause"
+                ),
+
             "recommended_action":
                 analysis.get(
                     "recommended_action"
+                ),
+
+            "ai_explanation":
+                analysis.get(
+                    "explanation"
                 ),
 
             "decision":

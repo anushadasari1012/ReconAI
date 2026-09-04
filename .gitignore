@@ -20,3 +20,4 @@ Thumbs.db
 
 # Logs
 *.log	backend/reconai.db 
+backend/reconai.db 

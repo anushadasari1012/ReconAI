@@ -7,3 +7,5 @@ openpyxl
 PyJWT
 SQLAlchemy
 bcrypt
+scikit-learn
+numpy
