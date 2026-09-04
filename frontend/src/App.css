@@ -1437,3 +1437,203 @@ padding: 36px 46px 30px;
 .reports-section h3 {
   color: #000000 !important;
 }
+
+/* =========================================================
+   RECONAI PIPELINE
+   ========================================================= */
+
+.pipeline-section {
+  margin-top: 28px;
+}
+
+.pipeline-container {
+  display: flex;
+  align-items: stretch;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.pipeline-card {
+  flex: 1;
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #ffffff;
+  transition: all 0.2s ease;
+}
+
+.pipeline-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+}
+
+.pipeline-complete {
+  border-color: #22c55e;
+}
+
+.pipeline-ready {
+  border-color: #d1d5db;
+}
+
+.pipeline-number {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #111827;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 14px;
+}
+
+.pipeline-content h3 {
+  margin: 0 0 7px 0;
+  font-size: 16px;
+  color: #111827;
+}
+
+.pipeline-content p {
+  margin: 0 0 14px 0;
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.pipeline-status {
+  display: inline-block;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #374151;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.pipeline-button {
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 8px;
+  background: #111827;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.pipeline-button:hover {
+  background: #374151;
+}
+
+.pipeline-button:disabled {
+  background: #d1d5db;
+  cursor: not-allowed;
+}
+
+.pipeline-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.pipeline-message {
+  margin-top: 16px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  color: #374151;
+  font-size: 13px;
+}
+
+.pipeline-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.pipeline-metric {
+  padding: 14px;
+  border-radius: 10px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+}
+
+.pipeline-metric strong {
+  display: block;
+  font-size: 20px;
+  color: #111827;
+}
+
+.pipeline-metric span {
+  display: block;
+  margin-top: 4px;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+/* Source data preview */
+
+.source-preview {
+  margin-top: 24px;
+}
+
+.source-preview h3 {
+  margin-bottom: 12px;
+  color: #111827;
+}
+
+.source-preview table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.source-preview th,
+.source-preview td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.source-preview th {
+  background: #f9fafb;
+  color: #374151;
+  font-weight: 600;
+}
+
+.source-preview td {
+  color: #4b5563;
+}
+
+/* Responsive layout */
+
+@media (max-width: 900px) {
+  .pipeline-container {
+    flex-direction: column;
+  }
+
+  .pipeline-arrow {
+    transform: rotate(90deg);
+  }
+}
+
+@media (max-width: 600px) {
+  .pipeline-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .pipeline-card {
+    padding: 16px;
+  }
+}

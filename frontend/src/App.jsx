@@ -20,6 +20,26 @@ function App() {
   const [loginLoading, setLoginLoading] = useState(false);
 
   // =========================
+  // PIPELINE / SOURCE DATA
+  // =========================
+
+  const [sourceDataLoading, setSourceDataLoading] = useState(false);
+  const [sourceDataLoaded, setSourceDataLoaded] = useState(false);
+  const [sourceData, setSourceData] = useState(null);
+
+  // Dashboard is locked until both source CSV files are uploaded.
+  const [sourceUploaded, setSourceUploaded] = useState(
+    localStorage.getItem("reconai_source_uploaded") === "true"
+  );
+  const [paymentFile, setPaymentFile] = useState(null);
+  const [settlementFile, setSettlementFile] = useState(null);
+  const [uploadLoading, setUploadLoading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+
+  const [reconciliationRun, setReconciliationRun] = useState(false);
+  const [pipelineMessage, setPipelineMessage] = useState("");
+
+  // =========================
   // DASHBOARD DATA
   // =========================
 
@@ -115,6 +135,7 @@ function App() {
 
   function handleLogout() {
     localStorage.removeItem("reconai_token");
+    localStorage.removeItem("reconai_source_uploaded");
 
     setToken(null);
     setUser(null);
@@ -127,6 +148,11 @@ function App() {
 
     setSelectedException(null);
     setDetails(null);
+
+    setSourceData(null);
+    setSourceDataLoaded(false);
+    setReconciliationRun(false);
+    setPipelineMessage("");
 
     setError("");
     setLoginError("");
@@ -210,150 +236,359 @@ function App() {
   // =========================
   // LOAD DASHBOARD DATA
   // =========================
+  // IMPORTANT:
+  // This is outside useEffect so that
+  // handleRunReconciliation() can call it.
 
-  useEffect(() => {
-    async function loadData() {
-      if (!token || !user) {
-        return;
+  async function loadDashboardData() {
+    if (!token || !user) {
+      return;
+    }
+
+    try {
+      setError("");
+
+      const healthPromise = fetch(
+        `${API_URL}/health`
+      );
+
+      const summaryPromise = authenticatedFetch(
+        `${API_URL}/summary`
+      );
+
+      const exceptionsPromise = authenticatedFetch(
+        `${API_URL}/exceptions`
+      );
+
+      const reconciliationPromise = authenticatedFetch(
+        `${API_URL}/reconcile`
+      );
+
+      const [
+        healthResponse,
+        summaryResponse,
+        exceptionsResponse,
+        reconciliationResponse,
+      ] = await Promise.all([
+        healthPromise,
+        summaryPromise,
+        exceptionsPromise,
+        reconciliationPromise,
+      ]);
+
+      // -------------------------
+      // HEALTH
+      // -------------------------
+
+      if (!healthResponse.ok) {
+        throw new Error(
+          "Health service is unavailable."
+        );
       }
 
-      try {
-        setError("");
+      // -------------------------
+      // SUMMARY
+      // -------------------------
 
-        const healthPromise = fetch(
-          `${API_URL}/health`
+      if (!summaryResponse.ok) {
+        throw new Error(
+          "Summary service is unavailable."
         );
+      }
 
-        const summaryPromise = authenticatedFetch(
-          `${API_URL}/summary`
+      // -------------------------
+      // EXCEPTIONS
+      // -------------------------
+
+      if (!exceptionsResponse.ok) {
+        throw new Error(
+          "Exceptions service is unavailable."
         );
+      }
 
-        const exceptionsPromise = authenticatedFetch(
-          `${API_URL}/exceptions`
+      // -------------------------
+      // RECONCILIATION
+      // -------------------------
+
+      if (!reconciliationResponse.ok) {
+        throw new Error(
+          "Reconciliation service is unavailable."
         );
+      }
 
-        const reconciliationPromise = authenticatedFetch(
-          `${API_URL}/reconcile`
-        );
+      const healthData =
+        await healthResponse.json();
 
-        const [
-          healthResponse,
-          summaryResponse,
-          exceptionsResponse,
-          reconciliationResponse,
-        ] = await Promise.all([
-          healthPromise,
-          summaryPromise,
-          exceptionsPromise,
-          reconciliationPromise,
-        ]);
+      const summaryData =
+        await summaryResponse.json();
 
-        // -------------------------
-        // HEALTH
-        // -------------------------
+      const exceptionsData =
+        await exceptionsResponse.json();
 
-        if (!healthResponse.ok) {
-          throw new Error(
-            "Health service is unavailable."
-          );
-        }
+      const reconciliationData =
+        await reconciliationResponse.json();
 
-        // -------------------------
-        // SUMMARY
-        // -------------------------
+      setHealth(healthData);
+      setSummary(summaryData);
 
-        if (!summaryResponse.ok) {
-          throw new Error(
-            "Summary service is unavailable."
-          );
-        }
+      setExceptions(
+        Array.isArray(exceptionsData)
+          ? exceptionsData
+          : []
+      );
 
-        // -------------------------
-        // EXCEPTIONS
-        // -------------------------
+      setReconciliation(
+        reconciliationData.results || []
+      );
 
-        if (!exceptionsResponse.ok) {
-          throw new Error(
-            "Exceptions service is unavailable."
-          );
-        }
+      // =========================
+      // ADMIN ANALYTICS
+      // =========================
 
-        // -------------------------
-        // RECONCILIATION
-        // -------------------------
-
-        if (!reconciliationResponse.ok) {
-          throw new Error(
-            "Reconciliation service is unavailable."
-          );
-        }
-
-        const healthData =
-          await healthResponse.json();
-
-        const summaryData =
-          await summaryResponse.json();
-
-        const exceptionsData =
-          await exceptionsResponse.json();
-
-        const reconciliationData =
-          await reconciliationResponse.json();
-
-        setHealth(healthData);
-        setSummary(summaryData);
-
-        setExceptions(
-          Array.isArray(exceptionsData)
-            ? exceptionsData
-            : []
-        );
-
-        setReconciliation(
-          reconciliationData.results || []
-        );
-
-        // =========================
-        // ADMIN ANALYTICS
-        // =========================
-
-        if (user.role === "ADMIN") {
-          try {
-            const analyticsResponse =
-              await authenticatedFetch(
-                `${API_URL}/analytics`
-              );
-
-            if (analyticsResponse.ok) {
-              const analyticsData =
-                await analyticsResponse.json();
-
-              setAnalytics(analyticsData);
-            }
-          } catch (analyticsError) {
-            console.error(
-              "Analytics loading error:",
-              analyticsError
+      if (user.role === "ADMIN") {
+        try {
+          const analyticsResponse =
+            await authenticatedFetch(
+              `${API_URL}/analytics`
             );
-          }
-        } else {
-          setAnalytics(null);
-        }
-      } catch (err) {
-        console.error(
-          "Dashboard loading error:",
-          err
-        );
 
-        setError(
-          err.message ||
-            "We couldn't reach the server. Please try again."
+          if (analyticsResponse.ok) {
+            const analyticsData =
+              await analyticsResponse.json();
+
+            setAnalytics(analyticsData);
+          }
+        } catch (analyticsError) {
+          console.error(
+            "Analytics loading error:",
+            analyticsError
+          );
+        }
+      } else {
+        setAnalytics(null);
+      }
+
+      return true;
+    } catch (err) {
+      console.error(
+        "Dashboard loading error:",
+        err
+      );
+
+      setError(
+        err.message ||
+          "We couldn't reach the server. Please try again."
+      );
+
+      throw err;
+    }
+  }
+
+  // =========================
+  // UPLOAD SOURCE DATASETS
+  // =========================
+
+  const handleUploadSourceData = async (e) => {
+    e.preventDefault();
+
+    setUploadError("");
+
+    if (!paymentFile || !settlementFile) {
+      setUploadError(
+        "Please select both the payment CSV and settlement CSV files."
+      );
+      return;
+    }
+
+    setUploadLoading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("payment_file", paymentFile);
+      formData.append("settlement_file", settlementFile);
+
+      const response = await authenticatedFetch(
+        `${API_URL}/upload-source-data`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.detail ||
+            data.error ||
+            "Failed to upload source datasets."
         );
+      }
+
+      localStorage.setItem("reconai_source_uploaded", "true");
+      setSourceUploaded(true);
+
+      setPipelineMessage(
+        `Source datasets uploaded successfully: ${data.payment_records} payment records and ${data.settlement_records} settlement records.`
+      );
+
+      // Load the uploaded source data and dashboard results immediately.
+      await handleLoadSourceData();
+      await loadDashboardData();
+    } catch (err) {
+      console.error("Source dataset upload error:", err);
+
+      setUploadError(
+        err.message ||
+          "Failed to upload source datasets. Please try again."
+      );
+    } finally {
+      setUploadLoading(false);
+    }
+  };
+
+  // =========================
+  // AUTOMATIC DASHBOARD LOAD
+  // =========================
+
+  useEffect(() => {
+    if (!token || !user || !sourceUploaded) {
+      return;
+    }
+
+    async function initializeDashboard() {
+      try {
+        await handleLoadSourceData();
+        await loadDashboardData();
+      } catch {
+        // Errors are already handled by the individual functions.
       }
     }
 
-    loadData();
-  }, [token, user]);
+    initializeDashboard();
+  }, [token, user, sourceUploaded]);
+
+  // =========================
+  // LOAD SOURCE DATA
+  // =========================
+
+  const handleLoadSourceData = async () => {
+    setSourceDataLoading(true);
+    setPipelineMessage("");
+
+    try {
+      const response = await authenticatedFetch(
+        `${API_URL}/source-data`
+      );
+
+      if (!response.ok) {
+        let message =
+          "Failed to load source data.";
+
+        try {
+          const errorData =
+            await response.json();
+
+          message =
+            errorData.detail ||
+            errorData.error ||
+            message;
+        } catch {
+          // Ignore JSON parsing error
+        }
+
+        throw new Error(message);
+      }
+
+      const data = await response.json();
+
+      setSourceData(data);
+      setSourceDataLoaded(true);
+
+      setPipelineMessage(
+        `Source data loaded successfully: ${data.payment_records} payment records and ${data.settlement_records} settlement records.`
+      );
+    } catch (err) {
+      console.error(
+        "Source data loading error:",
+        err
+      );
+
+      setPipelineMessage(
+        err.message ||
+          "Failed to load source data."
+      );
+    } finally {
+      setSourceDataLoading(false);
+    }
+  };
+
+  // =========================
+  // RUN RECONCILIATION
+  // =========================
+
+  const handleRunReconciliation = async () => {
+    if (!sourceDataLoaded) {
+      setPipelineMessage(
+        "Please load source data first."
+      );
+      return;
+    }
+
+    setPipelineMessage(
+      "Running reconciliation..."
+    );
+
+    try {
+      await loadDashboardData();
+
+      setReconciliationRun(true);
+
+      setPipelineMessage(
+        "Reconciliation completed successfully."
+      );
+    } catch (err) {
+      console.error(
+        "Reconciliation error:",
+        err
+      );
+
+      setPipelineMessage(
+        err.message ||
+          "Reconciliation failed."
+      );
+    }
+  };
+
+  // =========================
+  // RUN AI INVESTIGATION
+  // =========================
+
+  const handleRunAIInvestigation = () => {
+    if (!reconciliationRun) {
+      setPipelineMessage(
+        "Please run reconciliation first."
+      );
+      return;
+    }
+
+    setPipelineMessage(
+      "AI investigation is ready. Select an exception below to investigate."
+    );
+
+    // FIXED:
+    // Actual section ID is "investigation"
+    const investigationSection =
+      document.getElementById(
+        "investigation"
+      );
+
+    if (investigationSection) {
+      investigationSection.scrollIntoView({
+        behavior: "smooth",
+      });
+    }
+  };
 
   // =========================
   // VIEW EXCEPTION DETAILS
@@ -660,8 +895,6 @@ function App() {
 
           </div>
 
-        
-
           {/* FOOTER */}
           <div className="login-footer">
             ReconAI © 2026 All rights reserved.
@@ -682,6 +915,215 @@ function App() {
       <div className="loading-screen">
         <div className="loading">
           Authenticating...
+        </div>
+      </div>
+    );
+  }
+
+  // =========================
+  // SOURCE DATA UPLOAD SCREEN
+  // =========================
+
+  if (!sourceUploaded) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "32px 20px",
+          background: "#f8fafc",
+        }}
+      >
+        <div
+          style={{
+            width: "100%",
+            maxWidth: "620px",
+            background: "#ffffff",
+            border: "1px solid #e5e7eb",
+            borderRadius: "18px",
+            padding: "36px",
+            boxShadow: "0 12px 35px rgba(0, 0, 0, 0.08)",
+          }}
+        >
+          <div style={{ textAlign: "center", marginBottom: "28px" }}>
+            <div
+              style={{
+                width: "54px",
+                height: "54px",
+                borderRadius: "14px",
+                background: "#111827",
+                color: "#ffffff",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto 14px",
+                fontSize: "24px",
+                fontWeight: 700,
+              }}
+            >
+              R
+            </div>
+
+            <h1 style={{ margin: 0, color: "#111827", fontSize: "28px" }}>
+              ReconAI
+            </h1>
+
+            <p
+              style={{
+                margin: "8px 0 0",
+                color: "#6b7280",
+                lineHeight: 1.5,
+              }}
+            >
+              Upload the payment and settlement datasets to start the
+              reconciliation workflow.
+            </p>
+          </div>
+
+          <form onSubmit={handleUploadSourceData}>
+            <div style={{ display: "grid", gap: "18px" }}>
+              <div>
+                <label
+                  htmlFor="payment-file"
+                  style={{
+                    display: "block",
+                    marginBottom: "8px",
+                    fontWeight: 600,
+                    color: "#111827",
+                  }}
+                >
+                  Payment Dataset
+                </label>
+
+                <input
+                  id="payment-file"
+                  type="file"
+                  accept=".csv,text/csv"
+                  onChange={(e) => {
+                    setPaymentFile(e.target.files?.[0] || null);
+                    setUploadError("");
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    border: "1px solid #d1d5db",
+                    borderRadius: "10px",
+                    boxSizing: "border-box",
+                    background: "#f9fafb",
+                  }}
+                />
+
+                {paymentFile && (
+                  <p
+                    style={{
+                      margin: "7px 0 0",
+                      fontSize: "13px",
+                      color: "#16a34a",
+                    }}
+                  >
+                    ✓ {paymentFile.name}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label
+                  htmlFor="settlement-file"
+                  style={{
+                    display: "block",
+                    marginBottom: "8px",
+                    fontWeight: 600,
+                    color: "#111827",
+                  }}
+                >
+                  Settlement Dataset
+                </label>
+
+                <input
+                  id="settlement-file"
+                  type="file"
+                  accept=".csv,text/csv"
+                  onChange={(e) => {
+                    setSettlementFile(e.target.files?.[0] || null);
+                    setUploadError("");
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    border: "1px solid #d1d5db",
+                    borderRadius: "10px",
+                    boxSizing: "border-box",
+                    background: "#f9fafb",
+                  }}
+                />
+
+                {settlementFile && (
+                  <p
+                    style={{
+                      margin: "7px 0 0",
+                      fontSize: "13px",
+                      color: "#16a34a",
+                    }}
+                  >
+                    ✓ {settlementFile.name}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {uploadError && (
+              <div
+                style={{
+                  marginTop: "18px",
+                  padding: "12px 14px",
+                  borderRadius: "10px",
+                  background: "#fef2f2",
+                  border: "1px solid #fecaca",
+                  color: "#b91c1c",
+                  fontSize: "14px",
+                }}
+              >
+                {uploadError}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={!paymentFile || !settlementFile || uploadLoading}
+              style={{
+                width: "100%",
+                marginTop: "24px",
+                padding: "13px 16px",
+                border: "none",
+                borderRadius: "10px",
+                background:
+                  !paymentFile || !settlementFile || uploadLoading
+                    ? "#d1d5db"
+                    : "#111827",
+                color: "#ffffff",
+                fontWeight: 600,
+                cursor:
+                  !paymentFile || !settlementFile || uploadLoading
+                    ? "not-allowed"
+                    : "pointer",
+              }}
+            >
+              {uploadLoading ? "Uploading & Starting..." : "Upload & Start"}
+            </button>
+
+            <p
+              style={{
+                margin: "16px 0 0",
+                textAlign: "center",
+                color: "#6b7280",
+                fontSize: "12px",
+              }}
+            >
+              Both CSV files are required before the dashboard is available.
+            </p>
+          </form>
         </div>
       </div>
     );
@@ -892,8 +1334,7 @@ function App() {
 
               <div className="summary">
 
-                <h3
-                >
+                <h3>
                   Reconciliation Summary
                 </h3>
 
@@ -925,6 +1366,430 @@ function App() {
               </div>
 
             </>
+
+          )}
+
+        </section>
+
+        {/* =====================================================
+            RECONAI AI PIPELINE
+            ===================================================== */}
+
+        <section
+          id="pipeline"
+          className="pipeline-section"
+        >
+
+          <div className="section-heading">
+
+            <div>
+
+              <h2>
+                ReconAI Processing Pipeline
+              </h2>
+
+              <p>
+                Load payment data, reconcile transactions,
+                and investigate exceptions using AI.
+              </p>
+
+            </div>
+
+          </div>
+
+          {/* PIPELINE CARDS */}
+
+          <div className="pipeline-container">
+
+            {/* STEP 1 */}
+
+            <div
+              className={`pipeline-card ${
+                sourceDataLoaded
+                  ? "pipeline-complete"
+                  : ""
+              }`}
+            >
+
+              <div className="pipeline-number">
+                01
+              </div>
+
+              <div className="pipeline-content">
+
+                <h3>
+                  Load Source Data
+                </h3>
+
+                <p>
+                  Load payment and settlement records
+                  from the source datasets.
+                </p>
+
+                <button
+                  type="button"
+                  className="pipeline-button"
+                  onClick={handleLoadSourceData}
+                  disabled={sourceDataLoading}
+                >
+                  {sourceDataLoading
+                    ? "Loading..."
+                    : sourceDataLoaded
+                    ? "Reload Source Data"
+                    : "Load Source Data"}
+                </button>
+
+              </div>
+
+              <div className="pipeline-status">
+
+                {sourceDataLoaded
+                  ? "✓ Loaded"
+                  : "Waiting"}
+
+              </div>
+
+            </div>
+
+            {/* ARROW */}
+
+            <div className="pipeline-arrow">
+              →
+            </div>
+
+            {/* STEP 2 */}
+
+            <div
+              className={`pipeline-card ${
+                reconciliationRun
+                  ? "pipeline-complete"
+                  : ""
+              }`}
+            >
+
+              <div className="pipeline-number">
+                02
+              </div>
+
+              <div className="pipeline-content">
+
+                <h3>
+                  Exact Reconciliation
+                </h3>
+
+                <p>
+                  Compare payment and settlement
+                  records using deterministic rules.
+                </p>
+
+                <button
+                  type="button"
+                  className="pipeline-button"
+                  onClick={
+                    handleRunReconciliation
+                  }
+                  disabled={
+                    !sourceDataLoaded
+                  }
+                >
+                  {reconciliationRun
+                    ? "Run Again"
+                    : "Run Reconciliation"}
+                </button>
+
+              </div>
+
+              <div className="pipeline-status">
+
+                {reconciliationRun
+                  ? "✓ Completed"
+                  : sourceDataLoaded
+                  ? "Ready"
+                  : "Locked"}
+
+              </div>
+
+            </div>
+
+            {/* ARROW */}
+
+            <div className="pipeline-arrow">
+              →
+            </div>
+
+            {/* STEP 3 */}
+
+            <div
+              className={`pipeline-card ${
+                reconciliationRun
+                  ? "pipeline-ready"
+                  : ""
+              }`}
+            >
+
+              <div className="pipeline-number">
+                03
+              </div>
+
+              <div className="pipeline-content">
+
+                <h3>
+                  AI Investigation
+                </h3>
+
+                <p>
+                  Use ML anomaly detection to
+                  investigate unusual exceptions.
+                </p>
+
+                <button
+                  type="button"
+                  className="pipeline-button"
+                  onClick={
+                    handleRunAIInvestigation
+                  }
+                  disabled={
+                    !reconciliationRun
+                  }
+                >
+                  Run AI Investigation
+                </button>
+
+              </div>
+
+              <div className="pipeline-status">
+
+                {reconciliationRun
+                  ? "✓ Ready"
+                  : "Locked"}
+
+              </div>
+
+            </div>
+
+          </div>
+
+          {/* PIPELINE MESSAGE */}
+
+          {pipelineMessage && (
+
+            <div className="pipeline-message">
+              {pipelineMessage}
+            </div>
+
+          )}
+
+          {/* SOURCE DATA METRICS */}
+
+          {sourceDataLoaded &&
+            sourceData && (
+
+            <div className="pipeline-metrics">
+
+              <div className="pipeline-metric">
+
+                <span>
+                  Payment Records
+                </span>
+
+                <strong>
+                  {sourceData.payment_records ??
+                    0}
+                </strong>
+
+              </div>
+
+              <div className="pipeline-metric">
+
+                <span>
+                  Settlement Records
+                </span>
+
+                <strong>
+                  {sourceData.settlement_records ??
+                    0}
+                </strong>
+
+              </div>
+
+              <div className="pipeline-metric">
+
+                <span>
+                  Matched
+                </span>
+
+                <strong>
+                  {summary?.matched ?? 0}
+                </strong>
+
+              </div>
+
+              <div className="pipeline-metric">
+
+                <span>
+                  Exceptions
+                </span>
+
+                <strong>
+                  {summary?.exceptions ?? 0}
+                </strong>
+
+              </div>
+
+              <div className="pipeline-metric">
+
+                <span>
+                  Match Rate
+                </span>
+
+                <strong>
+                  {summary?.match_rate ?? 0}%
+                </strong>
+
+              </div>
+
+            </div>
+
+          )}
+
+          {/* SOURCE DATA PREVIEW */}
+
+          {sourceDataLoaded &&
+            sourceData && (
+
+            <div className="source-preview">
+
+              <div className="analysis-box">
+
+                <h3>
+                  Payment Source Preview
+                </h3>
+
+                <div className="table-container">
+
+                  <table className="exceptions-table">
+
+                    <thead>
+
+                      <tr>
+
+                        {sourceData.payment_preview?.[0] &&
+                          Object.keys(
+                            sourceData.payment_preview[0]
+                          ).map((key) => (
+
+                            <th key={key}>
+                              {key.replace(
+                                /_/g,
+                                " "
+                              )}
+                            </th>
+
+                          ))}
+
+                      </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                      {(
+                        sourceData.payment_preview ||
+                        []
+                      ).map((row, index) => (
+
+                        <tr key={index}>
+
+                          {Object.values(row).map(
+                            (value, valueIndex) => (
+
+                              <td key={valueIndex}>
+                                {String(
+                                  value ?? "—"
+                                )}
+                              </td>
+
+                            )
+                          )}
+
+                        </tr>
+
+                      ))}
+
+                    </tbody>
+
+                  </table>
+
+                </div>
+
+              </div>
+
+              <div className="analysis-box">
+
+                <h3>
+                  Settlement Source Preview
+                </h3>
+
+                <div className="table-container">
+
+                  <table className="exceptions-table">
+
+                    <thead>
+
+                      <tr>
+
+                        {sourceData.settlement_preview?.[0] &&
+                          Object.keys(
+                            sourceData.settlement_preview[0]
+                          ).map((key) => (
+
+                            <th key={key}>
+                              {key.replace(
+                                /_/g,
+                                " "
+                              )}
+                            </th>
+
+                          ))}
+
+                      </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                      {(
+                        sourceData.settlement_preview ||
+                        []
+                      ).map((row, index) => (
+
+                        <tr key={index}>
+
+                          {Object.values(row).map(
+                            (value, valueIndex) => (
+
+                              <td key={valueIndex}>
+                                {String(
+                                  value ?? "—"
+                                )}
+                              </td>
+
+                            )
+                          )}
+
+                        </tr>
+
+                      ))}
+
+                    </tbody>
+
+                  </table>
+
+                </div>
+
+              </div>
+
+            </div>
 
           )}
 
@@ -1971,101 +2836,101 @@ function App() {
 
               {/* AI ANALYSIS */}
 
-<div className="analysis-box">
+              <div className="analysis-box">
 
-  <h3>
-    AI Analysis
-  </h3>
+                <h3>
+                  AI Analysis
+                </h3>
 
-  <p>
-    <strong>
-      AI Method:
-    </strong>{" "}
-    {details.ai_analysis?.ai_method ||
-      "N/A"}
-  </p>
+                <p>
+                  <strong>
+                    AI Method:
+                  </strong>{" "}
+                  {details.ai_analysis?.ai_method ||
+                    "N/A"}
+                </p>
 
-  <p>
-    <strong>
-      Anomaly Status:
-    </strong>{" "}
-    {details.ai_analysis?.is_anomalous
-      ? "ANOMALY DETECTED"
-      : "NORMAL"}
-  </p>
+                <p>
+                  <strong>
+                    Anomaly Status:
+                  </strong>{" "}
+                  {details.ai_analysis?.is_anomalous
+                    ? "ANOMALY DETECTED"
+                    : "NORMAL"}
+                </p>
 
-  <p>
-    <strong>
-      Anomaly Confidence:
-    </strong>{" "}
-    {details.ai_analysis?.anomaly_confidence !==
-      null &&
-    details.ai_analysis?.anomaly_confidence !==
-      undefined
-      ? `${(
-          details.ai_analysis.anomaly_confidence *
-          100
-        ).toFixed(1)}%`
-      : "N/A"}
-  </p>
+                <p>
+                  <strong>
+                    Anomaly Confidence:
+                  </strong>{" "}
+                  {details.ai_analysis?.anomaly_confidence !==
+                    null &&
+                  details.ai_analysis?.anomaly_confidence !==
+                    undefined
+                    ? `${(
+                        details.ai_analysis.anomaly_confidence *
+                        100
+                      ).toFixed(1)}%`
+                    : "N/A"}
+                </p>
 
-  <p>
-    <strong>
-      Anomaly Score:
-    </strong>{" "}
-    {details.ai_analysis?.anomaly_score !==
-      null &&
-    details.ai_analysis?.anomaly_score !==
-      undefined
-      ? details.ai_analysis.anomaly_score
-      : "N/A"}
-  </p>
+                <p>
+                  <strong>
+                    Anomaly Score:
+                  </strong>{" "}
+                  {details.ai_analysis?.anomaly_score !==
+                    null &&
+                  details.ai_analysis?.anomaly_score !==
+                    undefined
+                    ? details.ai_analysis.anomaly_score
+                    : "N/A"}
+                </p>
 
-  <p>
-    <strong>
-      Risk Level:
-    </strong>{" "}
-    {details.ai_analysis?.risk_level ||
-      "N/A"}
-  </p>
+                <p>
+                  <strong>
+                    Risk Level:
+                  </strong>{" "}
+                  {details.ai_analysis?.risk_level ||
+                    "N/A"}
+                </p>
 
-  <p>
-    <strong>
-      Difference Percentage:
-    </strong>{" "}
-    {details.ai_analysis?.difference_percentage !==
-      null &&
-    details.ai_analysis?.difference_percentage !==
-      undefined
-      ? `${details.ai_analysis.difference_percentage}%`
-      : "N/A"}
-  </p>
+                <p>
+                  <strong>
+                    Difference Percentage:
+                  </strong>{" "}
+                  {details.ai_analysis?.difference_percentage !==
+                    null &&
+                  details.ai_analysis?.difference_percentage !==
+                    undefined
+                    ? `${details.ai_analysis.difference_percentage}%`
+                    : "N/A"}
+                </p>
 
-  <p>
-    <strong>
-      Possible Cause:
-    </strong>{" "}
-    {details.ai_analysis?.possible_cause ||
-      "N/A"}
-  </p>
+                <p>
+                  <strong>
+                    Possible Cause:
+                  </strong>{" "}
+                  {details.ai_analysis?.possible_cause ||
+                    "N/A"}
+                </p>
 
-  <p>
-    <strong>
-      AI Explanation:
-    </strong>{" "}
-    {details.ai_analysis?.explanation ||
-      "N/A"}
-  </p>
+                <p>
+                  <strong>
+                    AI Explanation:
+                  </strong>{" "}
+                  {details.ai_analysis?.explanation ||
+                    "N/A"}
+                </p>
 
-  <p>
-    <strong>
-      Recommended Action:
-    </strong>{" "}
-    {details.ai_analysis?.recommended_action ||
-      "N/A"}
-  </p>
+                <p>
+                  <strong>
+                    Recommended Action:
+                  </strong>{" "}
+                  {details.ai_analysis?.recommended_action ||
+                    "N/A"}
+                </p>
 
-</div>
+              </div>
 
               {/* DECISION */}
 
