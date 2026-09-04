@@ -28,9 +28,7 @@ function App() {
   const [sourceData, setSourceData] = useState(null);
 
   // Dashboard is locked until both source CSV files are uploaded.
-  const [sourceUploaded, setSourceUploaded] = useState(
-    localStorage.getItem("reconai_source_uploaded") === "true"
-  );
+ const [sourceUploaded, setSourceUploaded] = useState(false);
   const [paymentFile, setPaymentFile] = useState(null);
   const [settlementFile, setSettlementFile] = useState(null);
   const [uploadLoading, setUploadLoading] = useState(false);
@@ -425,7 +423,7 @@ function App() {
         );
       }
 
-      localStorage.setItem("reconai_source_uploaded", "true");
+      localStorage.setItem("reconai_source_uploaded");
       setSourceUploaded(true);
 
       setPipelineMessage(
