@@ -28,7 +28,7 @@ function App() {
   const [sourceData, setSourceData] = useState(null);
 
   // Dashboard is locked until both source CSV files are uploaded.
- const [sourceUploaded, setSourceUploaded] = useState(false);
+  const [sourceUploaded, setSourceUploaded] = useState(false);
   const [paymentFile, setPaymentFile] = useState(null);
   const [settlementFile, setSettlementFile] = useState(null);
   const [uploadLoading, setUploadLoading] = useState(false);
@@ -133,7 +133,6 @@ function App() {
 
   function handleLogout() {
     localStorage.removeItem("reconai_token");
-    localStorage.removeItem("reconai_source_uploaded");
 
     setToken(null);
     setUser(null);
@@ -149,6 +148,11 @@ function App() {
 
     setSourceData(null);
     setSourceDataLoaded(false);
+    setSourceUploaded(false);
+    setPaymentFile(null);
+    setSettlementFile(null);
+    setUploadError("");
+
     setReconciliationRun(false);
     setPipelineMessage("");
 
@@ -234,9 +238,6 @@ function App() {
   // =========================
   // LOAD DASHBOARD DATA
   // =========================
-  // IMPORTANT:
-  // This is outside useEffect so that
-  // handleRunReconciliation() can call it.
 
   async function loadDashboardData() {
     if (!token || !user) {
@@ -402,8 +403,16 @@ function App() {
 
     try {
       const formData = new FormData();
-      formData.append("payment_file", paymentFile);
-      formData.append("settlement_file", settlementFile);
+
+      formData.append(
+        "payment_file",
+        paymentFile
+      );
+
+      formData.append(
+        "settlement_file",
+        settlementFile
+      );
 
       const response = await authenticatedFetch(
         `${API_URL}/upload-source-data`,
@@ -423,7 +432,10 @@ function App() {
         );
       }
 
-      localStorage.setItem("reconai_source_uploaded");
+      // IMPORTANT:
+      // Do NOT save sourceUploaded in localStorage.
+      // Every new application session must upload
+      // both CSV files again.
       setSourceUploaded(true);
 
       setPipelineMessage(
@@ -434,7 +446,10 @@ function App() {
       await handleLoadSourceData();
       await loadDashboardData();
     } catch (err) {
-      console.error("Source dataset upload error:", err);
+      console.error(
+        "Source dataset upload error:",
+        err
+      );
 
       setUploadError(
         err.message ||
@@ -574,8 +589,6 @@ function App() {
       "AI investigation is ready. Select an exception below to investigate."
     );
 
-    // FIXED:
-    // Actual section ID is "investigation"
     const investigationSection =
       document.getElementById(
         "investigation"
@@ -751,14 +764,12 @@ function App() {
     return (
       <div className="login-page">
 
-        {/* Background Decorations */}
         <div className="login-decoration decoration-1"></div>
         <div className="login-decoration decoration-2"></div>
         <div className="login-decoration decoration-3"></div>
 
         <div className="login-card">
 
-          {/* BRAND */}
           <div className="login-brand">
 
             <div className="recon-logo">
@@ -775,13 +786,11 @@ function App() {
 
           </div>
 
-          {/* LOGIN FORM */}
           <form
             onSubmit={handleLogin}
             className="login-form"
           >
 
-            {/* Username */}
             <div className="input-group">
 
               <label>
@@ -809,7 +818,6 @@ function App() {
 
             </div>
 
-            {/* Password */}
             <div className="input-group">
 
               <label>
@@ -837,14 +845,12 @@ function App() {
 
             </div>
 
-            {/* Error */}
             {loginError && (
               <div className="login-error">
                 {loginError}
               </div>
             )}
 
-            {/* Login Button */}
             <button
               type="submit"
               className="login-button"
@@ -857,7 +863,6 @@ function App() {
 
           </form>
 
-          {/* SECURITY */}
           <div className="security-section">
 
             <div className="security-line">
@@ -893,7 +898,6 @@ function App() {
 
           </div>
 
-          {/* FOOTER */}
           <div className="login-footer">
             ReconAI © 2026 All rights reserved.
           </div>
@@ -945,7 +949,12 @@ function App() {
             boxShadow: "0 12px 35px rgba(0, 0, 0, 0.08)",
           }}
         >
-          <div style={{ textAlign: "center", marginBottom: "28px" }}>
+          <div
+            style={{
+              textAlign: "center",
+              marginBottom: "28px",
+            }}
+          >
             <div
               style={{
                 width: "54px",
@@ -964,7 +973,13 @@ function App() {
               R
             </div>
 
-            <h1 style={{ margin: 0, color: "#111827", fontSize: "28px" }}>
+            <h1
+              style={{
+                margin: 0,
+                color: "#111827",
+                fontSize: "28px",
+              }}
+            >
               ReconAI
             </h1>
 
@@ -981,8 +996,16 @@ function App() {
           </div>
 
           <form onSubmit={handleUploadSourceData}>
-            <div style={{ display: "grid", gap: "18px" }}>
+
+            <div
+              style={{
+                display: "grid",
+                gap: "18px",
+              }}
+            >
+
               <div>
+
                 <label
                   htmlFor="payment-file"
                   style={{
@@ -1000,7 +1023,10 @@ function App() {
                   type="file"
                   accept=".csv,text/csv"
                   onChange={(e) => {
-                    setPaymentFile(e.target.files?.[0] || null);
+                    setPaymentFile(
+                      e.target.files?.[0] || null
+                    );
+
                     setUploadError("");
                   }}
                   style={{
@@ -1024,9 +1050,11 @@ function App() {
                     ✓ {paymentFile.name}
                   </p>
                 )}
+
               </div>
 
               <div>
+
                 <label
                   htmlFor="settlement-file"
                   style={{
@@ -1044,7 +1072,10 @@ function App() {
                   type="file"
                   accept=".csv,text/csv"
                   onChange={(e) => {
-                    setSettlementFile(e.target.files?.[0] || null);
+                    setSettlementFile(
+                      e.target.files?.[0] || null
+                    );
+
                     setUploadError("");
                   }}
                   style={{
@@ -1068,7 +1099,9 @@ function App() {
                     ✓ {settlementFile.name}
                   </p>
                 )}
+
               </div>
+
             </div>
 
             {uploadError && (
@@ -1089,7 +1122,11 @@ function App() {
 
             <button
               type="submit"
-              disabled={!paymentFile || !settlementFile || uploadLoading}
+              disabled={
+                !paymentFile ||
+                !settlementFile ||
+                uploadLoading
+              }
               style={{
                 width: "100%",
                 marginTop: "24px",
@@ -1097,18 +1134,24 @@ function App() {
                 border: "none",
                 borderRadius: "10px",
                 background:
-                  !paymentFile || !settlementFile || uploadLoading
+                  !paymentFile ||
+                  !settlementFile ||
+                  uploadLoading
                     ? "#d1d5db"
                     : "#111827",
                 color: "#ffffff",
                 fontWeight: 600,
                 cursor:
-                  !paymentFile || !settlementFile || uploadLoading
+                  !paymentFile ||
+                  !settlementFile ||
+                  uploadLoading
                     ? "not-allowed"
                     : "pointer",
               }}
             >
-              {uploadLoading ? "Uploading & Starting..." : "Upload & Start"}
+              {uploadLoading
+                ? "Uploading & Starting..."
+                : "Upload & Start"}
             </button>
 
             <p
@@ -1121,6 +1164,7 @@ function App() {
             >
               Both CSV files are required before the dashboard is available.
             </p>
+
           </form>
         </div>
       </div>
@@ -1395,8 +1439,6 @@ function App() {
 
           </div>
 
-          {/* PIPELINE CARDS */}
-
           <div className="pipeline-container">
 
             {/* STEP 1 */}
@@ -1448,8 +1490,6 @@ function App() {
               </div>
 
             </div>
-
-            {/* ARROW */}
 
             <div className="pipeline-arrow">
               →
@@ -1509,8 +1549,6 @@ function App() {
 
             </div>
 
-            {/* ARROW */}
-
             <div className="pipeline-arrow">
               →
             </div>
@@ -1567,8 +1605,6 @@ function App() {
 
           </div>
 
-          {/* PIPELINE MESSAGE */}
-
           {pipelineMessage && (
 
             <div className="pipeline-message">
@@ -1576,8 +1612,6 @@ function App() {
             </div>
 
           )}
-
-          {/* SOURCE DATA METRICS */}
 
           {sourceDataLoaded &&
             sourceData && (
@@ -1649,8 +1683,6 @@ function App() {
             </div>
 
           )}
-
-          {/* SOURCE DATA PREVIEW */}
 
           {sourceDataLoaded &&
             sourceData && (
@@ -2502,6 +2534,7 @@ function App() {
                 <thead>
 
                   <tr>
+
                     <th>Payment ID</th>
                     <th>Reason</th>
                     <th>Expected Amount</th>
@@ -2511,6 +2544,7 @@ function App() {
                     <th>Decision</th>
                     <th>Recommended Action</th>
                     <th>Investigation</th>
+
                   </tr>
 
                 </thead>
@@ -2672,8 +2706,6 @@ function App() {
 
               </div>
 
-              {/* TOP DETAILS */}
-
               <div className="details-grid">
 
                 <div className="detail-card">
@@ -2739,8 +2771,6 @@ function App() {
                 </div>
 
               </div>
-
-              {/* RECONCILIATION DETAILS */}
 
               <div className="analysis-box">
 
@@ -2831,8 +2861,6 @@ function App() {
                 )}
 
               </div>
-
-              {/* AI ANALYSIS */}
 
               <div className="analysis-box">
 
@@ -2930,8 +2958,6 @@ function App() {
 
               </div>
 
-              {/* DECISION */}
-
               <div className="analysis-box">
 
                 <h3>
@@ -2965,8 +2991,6 @@ function App() {
                 </p>
 
               </div>
-
-              {/* AUDIT */}
 
               {details.audit && (
 
