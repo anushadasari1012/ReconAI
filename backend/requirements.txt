@@ -9,3 +9,4 @@ SQLAlchemy
 bcrypt
 scikit-learn
 numpy
+python-multipart
