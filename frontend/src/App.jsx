@@ -8,7 +8,6 @@ function App() {
   // AUTHENTICATION
   // =========================
 
-  // FIX:
   // Do NOT restore token from localStorage.
   // Every fresh page/session starts at Login.
   const [token, setToken] = useState(null);
@@ -28,10 +27,9 @@ function App() {
   const [sourceDataLoaded, setSourceDataLoaded] = useState(false);
   const [sourceData, setSourceData] = useState(null);
 
-  // IMPORTANT:
-  // This is React state only.
-  // It is NEVER stored in localStorage.
-  // Therefore every login requires fresh CSV upload.
+  // React state only.
+  // Never stored in localStorage.
+  // Every login requires fresh CSV upload.
   const [sourceUploaded, setSourceUploaded] = useState(false);
 
   const [paymentFile, setPaymentFile] = useState(null);
@@ -112,13 +110,11 @@ function App() {
         );
       }
 
-      // FIX:
-      // Do NOT save token in localStorage.
-      // Authentication exists only for this React session.
+      // Token exists only in React state.
+      // It is NOT saved in localStorage.
       setToken(data.access_token);
 
-      // FIX:
-      // Every successful login starts with a fresh upload requirement.
+      // Every successful login starts with fresh upload.
       setUser(null);
 
       setSourceUploaded(false);
@@ -160,7 +156,6 @@ function App() {
   // =========================
 
   function handleLogout() {
-    // FIX:
     // No localStorage token to remove.
     setToken(null);
     setUser(null);
@@ -174,7 +169,6 @@ function App() {
     setSelectedException(null);
     setDetails(null);
 
-    // IMPORTANT:
     // Reset source upload state.
     // Next login MUST upload both CSV files again.
     setSourceData(null);
@@ -197,13 +191,88 @@ function App() {
     setPassword("");
   }
 
+  // =====================================================
+  // 5-MINUTE INACTIVITY TIMEOUT
+  // =====================================================
+  //
+  // If the authenticated user does not interact with
+  // the dashboard for 5 minutes, automatically logout.
+  //
+  // Activity that resets the timer:
+  // - Mouse movement
+  // - Mouse click
+  // - Mouse button press
+  // - Keyboard
+  // - Scroll
+  // - Touch
+  //
+  // After logout:
+  // 1. Token becomes null
+  // 2. Login screen appears
+  // 3. Source upload state is reset
+  // 4. Next login requires both CSV files again
+  // =====================================================
+
+  useEffect(() => {
+    if (!token || !user) {
+      return;
+    }
+
+    let inactivityTimer;
+
+    const logoutAfterInactivity = () => {
+      console.log(
+        "User inactive for 5 minutes. Logging out."
+      );
+
+      handleLogout();
+    };
+
+    const resetInactivityTimer = () => {
+      clearTimeout(inactivityTimer);
+
+      inactivityTimer = setTimeout(
+        logoutAfterInactivity,
+        5 * 60 * 1000
+      );
+    };
+
+    const activityEvents = [
+      "mousemove",
+      "mousedown",
+      "keydown",
+      "scroll",
+      "touchstart",
+      "click",
+    ];
+
+    activityEvents.forEach((event) => {
+      window.addEventListener(
+        event,
+        resetInactivityTimer
+      );
+    });
+
+    // Start the timer immediately.
+    resetInactivityTimer();
+
+    return () => {
+      clearTimeout(inactivityTimer);
+
+      activityEvents.forEach((event) => {
+        window.removeEventListener(
+          event,
+          resetInactivityTimer
+        );
+      });
+    };
+  }, [token, user]);
+
   // =========================
   // AUTHENTICATED FETCH
   // =========================
 
   async function authenticatedFetch(url, options = {}) {
-    // FIX:
-    // Use current React token instead of localStorage.
     if (!token) {
       handleLogout();
       throw new Error("You are not authenticated.");
@@ -261,8 +330,6 @@ function App() {
           err
         );
 
-        // FIX:
-        // No localStorage token exists anymore.
         setToken(null);
         setUser(null);
       }
@@ -452,8 +519,7 @@ function App() {
         );
       }
 
-      // FIX:
-      // Only React state.
+      // React state only.
       // NEVER localStorage.
       setSourceUploaded(true);
 
@@ -461,9 +527,7 @@ function App() {
         `Source datasets uploaded successfully: ${data.payment_records} payment records and ${data.settlement_records} settlement records.`
       );
 
-      // FIX:
-      // Do NOT call handleLoadSourceData() and loadDashboardData()
-      // here because the useEffect below will do it once.
+      // Dashboard loading happens in useEffect.
     } catch (err) {
       console.error(
         "Source dataset upload error:",
@@ -1187,8 +1251,6 @@ function App() {
               dashboard is available.
             </p>
 
-            {/* FIX:
-                Allow the user to logout from upload screen too. */}
             <button
               type="button"
               onClick={handleLogout}
