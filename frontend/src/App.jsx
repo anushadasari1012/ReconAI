@@ -8,9 +8,10 @@ function App() {
   // AUTHENTICATION
   // =========================
 
-  const [token, setToken] = useState(
-    localStorage.getItem("reconai_token")
-  );
+  // FIX:
+  // Do NOT restore token from localStorage.
+  // Every fresh page/session starts at Login.
+  const [token, setToken] = useState(null);
 
   const [user, setUser] = useState(null);
 
@@ -27,8 +28,12 @@ function App() {
   const [sourceDataLoaded, setSourceDataLoaded] = useState(false);
   const [sourceData, setSourceData] = useState(null);
 
-  // Dashboard is locked until both source CSV files are uploaded.
+  // IMPORTANT:
+  // This is React state only.
+  // It is NEVER stored in localStorage.
+  // Therefore every login requires fresh CSV upload.
   const [sourceUploaded, setSourceUploaded] = useState(false);
+
   const [paymentFile, setPaymentFile] = useState(null);
   const [settlementFile, setSettlementFile] = useState(null);
   const [uploadLoading, setUploadLoading] = useState(false);
@@ -107,12 +112,35 @@ function App() {
         );
       }
 
-      localStorage.setItem(
-        "reconai_token",
-        data.access_token
-      );
-
+      // FIX:
+      // Do NOT save token in localStorage.
+      // Authentication exists only for this React session.
       setToken(data.access_token);
+
+      // FIX:
+      // Every successful login starts with a fresh upload requirement.
+      setUser(null);
+
+      setSourceUploaded(false);
+      setPaymentFile(null);
+      setSettlementFile(null);
+      setSourceData(null);
+      setSourceDataLoaded(false);
+
+      setReconciliationRun(false);
+      setPipelineMessage("");
+      setUploadError("");
+
+      setSummary(null);
+      setAnalytics(null);
+      setExceptions([]);
+      setReconciliation([]);
+      setHealth(null);
+
+      setSelectedException(null);
+      setDetails(null);
+
+      setError("");
 
       setUsername("");
       setPassword("");
@@ -132,8 +160,8 @@ function App() {
   // =========================
 
   function handleLogout() {
-    localStorage.removeItem("reconai_token");
-
+    // FIX:
+    // No localStorage token to remove.
     setToken(null);
     setUser(null);
 
@@ -146,11 +174,17 @@ function App() {
     setSelectedException(null);
     setDetails(null);
 
+    // IMPORTANT:
+    // Reset source upload state.
+    // Next login MUST upload both CSV files again.
     setSourceData(null);
     setSourceDataLoaded(false);
     setSourceUploaded(false);
+
     setPaymentFile(null);
     setSettlementFile(null);
+
+    setUploadLoading(false);
     setUploadError("");
 
     setReconciliationRun(false);
@@ -158,6 +192,9 @@ function App() {
 
     setError("");
     setLoginError("");
+
+    setUsername("");
+    setPassword("");
   }
 
   // =========================
@@ -165,17 +202,16 @@ function App() {
   // =========================
 
   async function authenticatedFetch(url, options = {}) {
-    const currentToken =
-      localStorage.getItem("reconai_token");
-
-    if (!currentToken) {
+    // FIX:
+    // Use current React token instead of localStorage.
+    if (!token) {
       handleLogout();
       throw new Error("You are not authenticated.");
     }
 
     const headers = {
       ...(options.headers || {}),
-      Authorization: `Bearer ${currentToken}`,
+      Authorization: `Bearer ${token}`,
     };
 
     const response = await fetch(url, {
@@ -225,8 +261,8 @@ function App() {
           err
         );
 
-        localStorage.removeItem("reconai_token");
-
+        // FIX:
+        // No localStorage token exists anymore.
         setToken(null);
         setUser(null);
       }
@@ -275,19 +311,11 @@ function App() {
         reconciliationPromise,
       ]);
 
-      // -------------------------
-      // HEALTH
-      // -------------------------
-
       if (!healthResponse.ok) {
         throw new Error(
           "Health service is unavailable."
         );
       }
-
-      // -------------------------
-      // SUMMARY
-      // -------------------------
 
       if (!summaryResponse.ok) {
         throw new Error(
@@ -295,19 +323,11 @@ function App() {
         );
       }
 
-      // -------------------------
-      // EXCEPTIONS
-      // -------------------------
-
       if (!exceptionsResponse.ok) {
         throw new Error(
           "Exceptions service is unavailable."
         );
       }
-
-      // -------------------------
-      // RECONCILIATION
-      // -------------------------
 
       if (!reconciliationResponse.ok) {
         throw new Error(
@@ -432,19 +452,18 @@ function App() {
         );
       }
 
-      // IMPORTANT:
-      // Do NOT save sourceUploaded in localStorage.
-      // Every new application session must upload
-      // both CSV files again.
+      // FIX:
+      // Only React state.
+      // NEVER localStorage.
       setSourceUploaded(true);
 
       setPipelineMessage(
         `Source datasets uploaded successfully: ${data.payment_records} payment records and ${data.settlement_records} settlement records.`
       );
 
-      // Load the uploaded source data and dashboard results immediately.
-      await handleLoadSourceData();
-      await loadDashboardData();
+      // FIX:
+      // Do NOT call handleLoadSourceData() and loadDashboardData()
+      // here because the useEffect below will do it once.
     } catch (err) {
       console.error(
         "Source dataset upload error:",
@@ -474,7 +493,7 @@ function App() {
         await handleLoadSourceData();
         await loadDashboardData();
       } catch {
-        // Errors are already handled by the individual functions.
+        // Errors are handled by individual functions.
       }
     }
 
@@ -946,7 +965,8 @@ function App() {
             border: "1px solid #e5e7eb",
             borderRadius: "18px",
             padding: "36px",
-            boxShadow: "0 12px 35px rgba(0, 0, 0, 0.08)",
+            boxShadow:
+              "0 12px 35px rgba(0, 0, 0, 0.08)",
           }}
         >
           <div
@@ -990,7 +1010,8 @@ function App() {
                 lineHeight: 1.5,
               }}
             >
-              Upload the payment and settlement datasets to start the
+              Upload the payment and settlement
+              datasets to start the
               reconciliation workflow.
             </p>
           </div>
@@ -1162,8 +1183,29 @@ function App() {
                 fontSize: "12px",
               }}
             >
-              Both CSV files are required before the dashboard is available.
+              Both CSV files are required before the
+              dashboard is available.
             </p>
+
+            {/* FIX:
+                Allow the user to logout from upload screen too. */}
+            <button
+              type="button"
+              onClick={handleLogout}
+              style={{
+                width: "100%",
+                marginTop: "10px",
+                padding: "11px 16px",
+                border: "1px solid #d1d5db",
+                borderRadius: "10px",
+                background: "#ffffff",
+                color: "#374151",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Logout
+            </button>
 
           </form>
         </div>
@@ -1606,11 +1648,9 @@ function App() {
           </div>
 
           {pipelineMessage && (
-
             <div className="pipeline-message">
               {pipelineMessage}
             </div>
-
           )}
 
           {sourceDataLoaded &&
@@ -1619,33 +1659,26 @@ function App() {
             <div className="pipeline-metrics">
 
               <div className="pipeline-metric">
-
                 <span>
                   Payment Records
                 </span>
 
                 <strong>
-                  {sourceData.payment_records ??
-                    0}
+                  {sourceData.payment_records ?? 0}
                 </strong>
-
               </div>
 
               <div className="pipeline-metric">
-
                 <span>
                   Settlement Records
                 </span>
 
                 <strong>
-                  {sourceData.settlement_records ??
-                    0}
+                  {sourceData.settlement_records ?? 0}
                 </strong>
-
               </div>
 
               <div className="pipeline-metric">
-
                 <span>
                   Matched
                 </span>
@@ -1653,11 +1686,9 @@ function App() {
                 <strong>
                   {summary?.matched ?? 0}
                 </strong>
-
               </div>
 
               <div className="pipeline-metric">
-
                 <span>
                   Exceptions
                 </span>
@@ -1665,11 +1696,9 @@ function App() {
                 <strong>
                   {summary?.exceptions ?? 0}
                 </strong>
-
               </div>
 
               <div className="pipeline-metric">
-
                 <span>
                   Match Rate
                 </span>
@@ -1677,7 +1706,6 @@ function App() {
                 <strong>
                   {summary?.match_rate ?? 0}%
                 </strong>
-
               </div>
 
             </div>
@@ -2029,7 +2057,6 @@ function App() {
                 <div className="analytics-cards">
 
                   <div className="analytics-card">
-
                     <span>
                       Total Transactions
                     </span>
@@ -2037,11 +2064,9 @@ function App() {
                     <strong>
                       {summary.total_transactions}
                     </strong>
-
                   </div>
 
                   <div className="analytics-card">
-
                     <span>
                       Successfully Matched
                     </span>
@@ -2049,11 +2074,9 @@ function App() {
                     <strong>
                       {summary.matched}
                     </strong>
-
                   </div>
 
                   <div className="analytics-card">
-
                     <span>
                       Exceptions
                     </span>
@@ -2061,11 +2084,9 @@ function App() {
                     <strong>
                       {summary.exceptions}
                     </strong>
-
                   </div>
 
                   <div className="analytics-card">
-
                     <span>
                       Match Rate
                     </span>
@@ -2073,7 +2094,6 @@ function App() {
                     <strong>
                       {summary.match_rate}%
                     </strong>
-
                   </div>
 
                 </div>
@@ -2779,37 +2799,29 @@ function App() {
                 </h3>
 
                 <p>
-
                   <strong>
                     Reason:
                   </strong>{" "}
-
                   {details.reconciliation
                     ?.reason ||
                     "N/A"}
-
                 </p>
 
                 <p>
-
                   <strong>
                     Expected Amount:
                   </strong>{" "}
-
                   {details.reconciliation
                     ?.expected_amount !==
                   undefined
                     ? `₹${details.reconciliation.expected_amount}`
                     : "N/A"}
-
                 </p>
 
                 <p>
-
                   <strong>
                     Settled Amount:
                   </strong>{" "}
-
                   {details.reconciliation
                     ?.settled_amount !== null &&
                   details.reconciliation
@@ -2817,7 +2829,6 @@ function App() {
                     undefined
                     ? `₹${details.reconciliation.settled_amount}`
                     : "Not settled"}
-
                 </p>
 
                 {details.reconciliation
@@ -2965,29 +2976,23 @@ function App() {
                 </h3>
 
                 <p>
-
                   <strong>
                     Decision:
                   </strong>{" "}
-
                   {details.decision
                     ?.decision ||
                     "N/A"}
-
                 </p>
 
                 <p>
-
                   <strong>
                     Reason:
                   </strong>{" "}
-
                   {details.decision
                     ?.reason ||
                     details.decision
                       ?.decision_reason ||
                     "No decision reason available."}
-
                 </p>
 
               </div>
