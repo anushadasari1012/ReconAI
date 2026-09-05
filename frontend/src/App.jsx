@@ -8,8 +8,6 @@ function App() {
   // AUTHENTICATION
   // =========================
 
-  // Restore JWT from localStorage.
-  // This keeps the user authenticated after page refresh.
   const [token, setToken] = useState(
     localStorage.getItem("token")
   );
@@ -25,22 +23,31 @@ function App() {
   // PIPELINE / SOURCE DATA
   // =========================
 
-  const [sourceDataLoading, setSourceDataLoading] = useState(false);
-  const [sourceDataLoaded, setSourceDataLoaded] = useState(false);
+  const [sourceDataLoading, setSourceDataLoading] =
+    useState(false);
+
+  const [sourceDataLoaded, setSourceDataLoaded] =
+    useState(false);
+
   const [sourceData, setSourceData] = useState(null);
 
-  // React state only.
-  // NEVER stored in localStorage.
-  // Every login requires fresh CSV upload.
-  const [sourceUploaded, setSourceUploaded] = useState(false);
+  const [sourceUploaded, setSourceUploaded] =
+    useState(false);
 
   const [paymentFile, setPaymentFile] = useState(null);
-  const [settlementFile, setSettlementFile] = useState(null);
-  const [uploadLoading, setUploadLoading] = useState(false);
+  const [settlementFile, setSettlementFile] =
+    useState(null);
+
+  const [uploadLoading, setUploadLoading] =
+    useState(false);
+
   const [uploadError, setUploadError] = useState("");
 
-  const [reconciliationRun, setReconciliationRun] = useState(false);
-  const [pipelineMessage, setPipelineMessage] = useState("");
+  const [reconciliationRun, setReconciliationRun] =
+    useState(false);
+
+  const [pipelineMessage, setPipelineMessage] =
+    useState("");
 
   // =========================
   // DASHBOARD DATA
@@ -49,7 +56,9 @@ function App() {
   const [summary, setSummary] = useState(null);
   const [analytics, setAnalytics] = useState(null);
   const [exceptions, setExceptions] = useState([]);
-  const [reconciliation, setReconciliation] = useState([]);
+  const [reconciliation, setReconciliation] =
+    useState([]);
+
   const [health, setHealth] = useState(null);
   const [error, setError] = useState("");
 
@@ -57,24 +66,34 @@ function App() {
   // EXCEPTION INVESTIGATION
   // =========================
 
-  const [selectedException, setSelectedException] = useState(null);
+  const [selectedException, setSelectedException] =
+    useState(null);
+
   const [details, setDetails] = useState(null);
-  const [detailsLoading, setDetailsLoading] = useState(false);
+
+  const [detailsLoading, setDetailsLoading] =
+    useState(false);
 
   // =========================
   // EXCEPTION FILTERS
   // =========================
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [riskFilter, setRiskFilter] = useState("ALL");
-  const [decisionFilter, setDecisionFilter] = useState("ALL");
+  const [riskFilter, setRiskFilter] =
+    useState("ALL");
+
+  const [decisionFilter, setDecisionFilter] =
+    useState("ALL");
 
   // =========================
   // RECONCILIATION FILTERS
   // =========================
 
-  const [reconSearch, setReconSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [reconSearch, setReconSearch] =
+    useState("");
+
+  const [statusFilter, setStatusFilter] =
+    useState("ALL");
 
   // =========================
   // LOGIN
@@ -87,22 +106,26 @@ function App() {
     setLoginLoading(true);
 
     try {
-      const response = await fetch(`${API_URL}/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          username: username.trim(),
-          password,
-        }),
-      });
+      const response = await fetch(
+        `${API_URL}/login`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            username: username.trim(),
+            password,
+          }),
+        }
+      );
 
       const data = await response.json();
 
       if (!response.ok) {
         throw new Error(
-          data.detail || "Invalid username or password"
+          data.detail ||
+            "Invalid username or password"
         );
       }
 
@@ -112,8 +135,6 @@ function App() {
         );
       }
 
-      // Save JWT in localStorage.
-      // This allows authentication to survive page refresh.
       localStorage.setItem(
         "token",
         data.access_token
@@ -125,13 +146,12 @@ function App() {
       // RESET APPLICATION STATE
       // =========================
 
-      // Every successful login requires
-      // a fresh source dataset upload.
       setUser(null);
 
       setSourceUploaded(false);
       setPaymentFile(null);
       setSettlementFile(null);
+
       setSourceData(null);
       setSourceDataLoaded(false);
 
@@ -157,7 +177,8 @@ function App() {
       console.error("Login error:", err);
 
       setLoginError(
-        err.message || "Login failed. Please try again."
+        err.message ||
+          "Login failed. Please try again."
       );
     } finally {
       setLoginLoading(false);
@@ -169,10 +190,8 @@ function App() {
   // =========================
 
   function handleLogout() {
-    // Remove JWT from browser storage.
     localStorage.removeItem("token");
 
-    // Clear authentication.
     setToken(null);
     setUser(null);
 
@@ -242,9 +261,14 @@ function App() {
   // AUTHENTICATED FETCH
   // =========================
 
-  async function authenticatedFetch(url, options = {}) {
+  async function authenticatedFetch(
+    url,
+    options = {}
+  ) {
     if (!token) {
-      throw new Error("You are not authenticated.");
+      throw new Error(
+        "You are not authenticated."
+      );
     }
 
     const headers = {
@@ -257,14 +281,12 @@ function App() {
       headers,
     });
 
-    // Token is invalid/expired.
     if (response.status === 401) {
       localStorage.removeItem("token");
 
       setToken(null);
       setUser(null);
 
-      // Reset application state.
       setSourceUploaded(false);
       setSourceData(null);
       setSourceDataLoaded(false);
@@ -285,7 +307,9 @@ function App() {
       setDetails(null);
       setDetailsLoading(false);
 
-      throw new Error("Your session has expired.");
+      throw new Error(
+        "Your session has expired."
+      );
     }
 
     return response;
@@ -303,9 +327,10 @@ function App() {
       }
 
       try {
-        const response = await authenticatedFetch(
-          `${API_URL}/me`
-        );
+        const response =
+          await authenticatedFetch(
+            `${API_URL}/me`
+          );
 
         if (!response.ok) {
           throw new Error(
@@ -354,17 +379,20 @@ function App() {
         `${API_URL}/health`
       );
 
-      const summaryPromise = authenticatedFetch(
-        `${API_URL}/summary`
-      );
+      const summaryPromise =
+        authenticatedFetch(
+          `${API_URL}/summary`
+        );
 
-      const exceptionsPromise = authenticatedFetch(
-        `${API_URL}/exceptions`
-      );
+      const exceptionsPromise =
+        authenticatedFetch(
+          `${API_URL}/exceptions`
+        );
 
-      const reconciliationPromise = authenticatedFetch(
-        `${API_URL}/reconcile`
-      );
+      const reconciliationPromise =
+        authenticatedFetch(
+          `${API_URL}/reconcile`
+        );
 
       const [
         healthResponse,
@@ -427,11 +455,7 @@ function App() {
         reconciliationData.results || []
       );
 
-      // =========================
-      // IMPORTANT FIX
-      // =========================
-      // /reconcile has completed successfully.
-      // Therefore reconciliation is considered completed.
+      // Reconciliation completed successfully.
       setReconciliationRun(true);
 
       // =========================
@@ -508,13 +532,14 @@ function App() {
         settlementFile
       );
 
-      const response = await authenticatedFetch(
-        `${API_URL}/upload-source-data`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
+      const response =
+        await authenticatedFetch(
+          `${API_URL}/upload-source-data`,
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
 
       const data = await response.json();
 
@@ -526,11 +551,8 @@ function App() {
         );
       }
 
-      // React state only.
-      // NEVER store sourceUploaded in localStorage.
       setSourceUploaded(true);
 
-      // Reset pipeline state for the new uploaded batch.
       setSourceDataLoaded(false);
       setSourceData(null);
       setReconciliationRun(false);
@@ -558,7 +580,11 @@ function App() {
   // =========================
 
   useEffect(() => {
-    if (!token || !user || !sourceUploaded) {
+    if (
+      !token ||
+      !user ||
+      !sourceUploaded
+    ) {
       return;
     }
 
@@ -568,10 +594,6 @@ function App() {
 
         await loadDashboardData();
 
-        // IMPORTANT FIX:
-        // loadDashboardData() calls /reconcile.
-        // Once it succeeds, reconciliation is complete
-        // and AI Investigation must be unlocked.
         setReconciliationRun(true);
 
         setPipelineMessage(
@@ -583,145 +605,151 @@ function App() {
     }
 
     initializeDashboard();
-  }, [token, user, sourceUploaded]);
+  }, [
+    token,
+    user,
+    sourceUploaded,
+  ]);
 
   // =========================
   // LOAD SOURCE DATA
   // =========================
 
-  const handleLoadSourceData = async () => {
-    setSourceDataLoading(true);
-    setPipelineMessage("");
+  const handleLoadSourceData =
+    async () => {
+      setSourceDataLoading(true);
+      setPipelineMessage("");
 
-    try {
-      const response = await authenticatedFetch(
-        `${API_URL}/source-data`
-      );
+      try {
+        const response =
+          await authenticatedFetch(
+            `${API_URL}/source-data`
+          );
 
-      if (!response.ok) {
-        let message =
-          "Failed to load source data.";
+        if (!response.ok) {
+          let message =
+            "Failed to load source data.";
 
-        try {
-          const errorData =
-            await response.json();
+          try {
+            const errorData =
+              await response.json();
 
-          message =
-            errorData.detail ||
-            errorData.error ||
-            message;
-        } catch {
-          // Ignore JSON parsing error.
+            message =
+              errorData.detail ||
+              errorData.error ||
+              message;
+          } catch {
+            // Ignore JSON parsing error.
+          }
+
+          throw new Error(message);
         }
 
-        throw new Error(message);
+        const data =
+          await response.json();
+
+        setSourceData(data);
+        setSourceDataLoaded(true);
+
+        setPipelineMessage(
+          `Source data loaded successfully: ${data.payment_records} payment records and ${data.settlement_records} settlement records.`
+        );
+      } catch (err) {
+        console.error(
+          "Source data loading error:",
+          err
+        );
+
+        setPipelineMessage(
+          err.message ||
+            "Failed to load source data."
+        );
+      } finally {
+        setSourceDataLoading(false);
       }
-
-      const data = await response.json();
-
-      setSourceData(data);
-      setSourceDataLoaded(true);
-
-      setPipelineMessage(
-        `Source data loaded successfully: ${data.payment_records} payment records and ${data.settlement_records} settlement records.`
-      );
-    } catch (err) {
-      console.error(
-        "Source data loading error:",
-        err
-      );
-
-      setPipelineMessage(
-        err.message ||
-          "Failed to load source data."
-      );
-    } finally {
-      setSourceDataLoading(false);
-    }
-  };
+    };
 
   // =========================
   // RUN RECONCILIATION
   // =========================
 
-  const handleRunReconciliation = async () => {
-    if (!sourceDataLoaded) {
-      setPipelineMessage(
-        "Please load source data first."
-      );
-      return;
-    }
-
-    setPipelineMessage(
-      "Running reconciliation..."
-    );
-
-    try {
-      await loadDashboardData();
-
-      // Reconciliation succeeded.
-      setReconciliationRun(true);
+  const handleRunReconciliation =
+    async () => {
+      if (!sourceDataLoaded) {
+        setPipelineMessage(
+          "Please load source data first."
+        );
+        return;
+      }
 
       setPipelineMessage(
-        "Reconciliation completed successfully. AI Investigation is now ready."
-      );
-    } catch (err) {
-      console.error(
-        "Reconciliation error:",
-        err
+        "Running reconciliation..."
       );
 
-      // If reconciliation failed,
-      // AI Investigation must remain locked.
-      setReconciliationRun(false);
+      try {
+        await loadDashboardData();
 
-      setPipelineMessage(
-        err.message ||
-          "Reconciliation failed."
-      );
-    }
-  };
+        setReconciliationRun(true);
+
+        setPipelineMessage(
+          "Reconciliation completed successfully. AI Investigation is now ready."
+        );
+      } catch (err) {
+        console.error(
+          "Reconciliation error:",
+          err
+        );
+
+        setReconciliationRun(false);
+
+        setPipelineMessage(
+          err.message ||
+            "Reconciliation failed."
+        );
+      }
+    };
 
   // =========================
   // RUN AI INVESTIGATION
   // =========================
 
-  const handleRunAIInvestigation = () => {
-    if (!reconciliationRun) {
+  const handleRunAIInvestigation =
+    () => {
+      if (!reconciliationRun) {
+        setPipelineMessage(
+          "Please run reconciliation first."
+        );
+        return;
+      }
+
+      if (!exceptions.length) {
+        setPipelineMessage(
+          "No exceptions are available for AI investigation."
+        );
+        return;
+      }
+
       setPipelineMessage(
-        "Please run reconciliation first."
+        "AI Investigation is ready. Select an exception below and click View Details."
       );
-      return;
-    }
 
-    if (!exceptions.length) {
-      setPipelineMessage(
-        "No exceptions are available for AI investigation."
-      );
-      return;
-    }
-
-    setPipelineMessage(
-      "AI Investigation is ready. Select an exception below and click View Details."
-    );
-
-    // Scroll to Exceptions section.
-    // The user can select an exception there.
-    setTimeout(() => {
-      document
-        .getElementById("exceptions")
-        ?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
-    }, 100);
-  };
+      setTimeout(() => {
+        document
+          .getElementById("exceptions")
+          ?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          });
+      }, 100);
+    };
 
   // =========================
   // VIEW EXCEPTION DETAILS
   // =========================
 
-  async function viewDetails(paymentId) {
+  async function viewDetails(
+    paymentId
+  ) {
     try {
       setDetailsLoading(true);
       setSelectedException(paymentId);
@@ -751,13 +779,16 @@ function App() {
         throw new Error(message);
       }
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
       setDetails(data);
 
       setTimeout(() => {
         document
-          .getElementById("investigation")
+          .getElementById(
+            "investigation"
+          )
           ?.scrollIntoView({
             behavior: "smooth",
           });
@@ -793,38 +824,40 @@ function App() {
   // =========================
 
   const filteredExceptions =
-    exceptions.filter((exception) => {
-      const paymentId = String(
-        exception.payment_id || ""
-      ).toLowerCase();
+    exceptions.filter(
+      (exception) => {
+        const paymentId = String(
+          exception.payment_id || ""
+        ).toLowerCase();
 
-      const risk = String(
-        exception.risk_level || ""
-      ).toUpperCase();
+        const risk = String(
+          exception.risk_level || ""
+        ).toUpperCase();
 
-      const decision = String(
-        exception.decision || ""
-      ).toUpperCase();
+        const decision = String(
+          exception.decision || ""
+        ).toUpperCase();
 
-      const matchesSearch =
-        paymentId.includes(
-          searchTerm.toLowerCase()
+        const matchesSearch =
+          paymentId.includes(
+            searchTerm.toLowerCase()
+          );
+
+        const matchesRisk =
+          riskFilter === "ALL" ||
+          risk === riskFilter;
+
+        const matchesDecision =
+          decisionFilter === "ALL" ||
+          decision === decisionFilter;
+
+        return (
+          matchesSearch &&
+          matchesRisk &&
+          matchesDecision
         );
-
-      const matchesRisk =
-        riskFilter === "ALL" ||
-        risk === riskFilter;
-
-      const matchesDecision =
-        decisionFilter === "ALL" ||
-        decision === decisionFilter;
-
-      return (
-        matchesSearch &&
-        matchesRisk &&
-        matchesDecision
-      );
-    });
+      }
+    );
 
   // =========================
   // FILTER RECONCILIATION
@@ -923,7 +956,9 @@ function App() {
                   type="text"
                   value={username}
                   onChange={(e) =>
-                    setUsername(e.target.value)
+                    setUsername(
+                      e.target.value
+                    )
                   }
                   placeholder="Enter username"
                   autoComplete="username"
@@ -950,7 +985,9 @@ function App() {
                   type="password"
                   value={password}
                   onChange={(e) =>
-                    setPassword(e.target.value)
+                    setPassword(
+                      e.target.value
+                    )
                   }
                   placeholder="Enter password"
                   autoComplete="current-password"
@@ -1066,12 +1103,14 @@ function App() {
               "0 12px 35px rgba(0, 0, 0, 0.08)",
           }}
         >
+
           <div
             style={{
               textAlign: "center",
               marginBottom: "28px",
             }}
           >
+
             <div
               style={{
                 width: "54px",
@@ -1111,9 +1150,14 @@ function App() {
               datasets to start the
               reconciliation workflow.
             </p>
+
           </div>
 
-          <form onSubmit={handleUploadSourceData}>
+          <form
+            onSubmit={
+              handleUploadSourceData
+            }
+          >
 
             <div
               style={{
@@ -1142,7 +1186,8 @@ function App() {
                   accept=".csv,text/csv"
                   onChange={(e) => {
                     setPaymentFile(
-                      e.target.files?.[0] || null
+                      e.target.files?.[0] ||
+                        null
                     );
 
                     setUploadError("");
@@ -1150,7 +1195,8 @@ function App() {
                   style={{
                     width: "100%",
                     padding: "12px",
-                    border: "1px solid #d1d5db",
+                    border:
+                      "1px solid #d1d5db",
                     borderRadius: "10px",
                     boxSizing: "border-box",
                     background: "#f9fafb",
@@ -1160,7 +1206,8 @@ function App() {
                 {paymentFile && (
                   <p
                     style={{
-                      margin: "7px 0 0",
+                      margin:
+                        "7px 0 0",
                       fontSize: "13px",
                       color: "#16a34a",
                     }}
@@ -1191,7 +1238,8 @@ function App() {
                   accept=".csv,text/csv"
                   onChange={(e) => {
                     setSettlementFile(
-                      e.target.files?.[0] || null
+                      e.target.files?.[0] ||
+                        null
                     );
 
                     setUploadError("");
@@ -1199,7 +1247,8 @@ function App() {
                   style={{
                     width: "100%",
                     padding: "12px",
-                    border: "1px solid #d1d5db",
+                    border:
+                      "1px solid #d1d5db",
                     borderRadius: "10px",
                     boxSizing: "border-box",
                     background: "#f9fafb",
@@ -1209,7 +1258,8 @@ function App() {
                 {settlementFile && (
                   <p
                     style={{
-                      margin: "7px 0 0",
+                      margin:
+                        "7px 0 0",
                       fontSize: "13px",
                       color: "#16a34a",
                     }}
@@ -1229,7 +1279,8 @@ function App() {
                   padding: "12px 14px",
                   borderRadius: "10px",
                   background: "#fef2f2",
-                  border: "1px solid #fecaca",
+                  border:
+                    "1px solid #fecaca",
                   color: "#b91c1c",
                   fontSize: "14px",
                 }}
@@ -1280,8 +1331,8 @@ function App() {
                 fontSize: "12px",
               }}
             >
-              Both CSV files are required before the
-              dashboard is available.
+              Both CSV files are required before
+              the dashboard is available.
             </p>
 
           </form>
@@ -1351,7 +1402,8 @@ function App() {
           <div className="user-info">
 
             <strong>
-              {user.name || user.username}
+              {user.name ||
+                user.username}
             </strong>
 
             <span>
@@ -1377,8 +1429,16 @@ function App() {
             type="button"
             className="logout-button"
             onClick={handleLogout}
+            title="Logout"
+            aria-label="Logout"
           >
-            Logout
+            <span className="logout-icon">
+              ↪
+            </span>
+
+            <span>
+              Logout
+            </span>
           </button>
 
         </div>
@@ -1409,8 +1469,9 @@ function App() {
           type="button"
           onClick={() =>
             window.scrollTo({
-              top: document.documentElement
-                .scrollHeight,
+              top:
+                document.documentElement
+                  .scrollHeight,
               behavior: "smooth",
             })
           }
@@ -1455,7 +1516,8 @@ function App() {
                   </p>
 
                   <h3>
-                    {summary.total_transactions ?? 0}
+                    {summary.total_transactions ??
+                      0}
                   </h3>
                 </div>
 
@@ -1505,7 +1567,8 @@ function App() {
                       width: `${Math.min(
                         Math.max(
                           Number(
-                            summary.match_rate || 0
+                            summary.match_rate ||
+                              0
                           ),
                           0
                         ),
@@ -1518,8 +1581,10 @@ function App() {
 
                 <p>
                   {summary.matched ?? 0} of{" "}
-                  {summary.total_transactions ?? 0}{" "}
-                  transactions matched successfully.
+                  {summary.total_transactions ??
+                    0}{" "}
+                  transactions matched
+                  successfully.
                 </p>
 
               </div>
@@ -1548,8 +1613,9 @@ function App() {
               </h2>
 
               <p>
-                Load payment data, reconcile transactions,
-                and investigate exceptions using AI.
+                Load payment data, reconcile
+                transactions, and investigate
+                exceptions using AI.
               </p>
 
             </div>
@@ -1579,15 +1645,19 @@ function App() {
                 </h3>
 
                 <p>
-                  Load payment and settlement records
-                  from the source datasets.
+                  Load payment and settlement
+                  records from the source datasets.
                 </p>
 
                 <button
                   type="button"
                   className="pipeline-button"
-                  onClick={handleLoadSourceData}
-                  disabled={sourceDataLoading}
+                  onClick={
+                    handleLoadSourceData
+                  }
+                  disabled={
+                    sourceDataLoading
+                  }
                 >
                   {sourceDataLoading
                     ? "Loading..."
@@ -1741,7 +1811,8 @@ function App() {
                 </span>
 
                 <strong>
-                  {sourceData.payment_records ?? 0}
+                  {sourceData.payment_records ??
+                    0}
                 </strong>
               </div>
 
@@ -1751,7 +1822,8 @@ function App() {
                 </span>
 
                 <strong>
-                  {sourceData.settlement_records ?? 0}
+                  {sourceData.settlement_records ??
+                    0}
                 </strong>
               </div>
 
@@ -1810,17 +1882,18 @@ function App() {
 
                         {sourceData.payment_preview?.[0] &&
                           Object.keys(
-                            sourceData.payment_preview[0]
-                          ).map((key) => (
-
-                            <th key={key}>
-                              {key.replace(
-                                /_/g,
-                                " "
-                              )}
-                            </th>
-
-                          ))}
+                            sourceData
+                              .payment_preview[0]
+                          ).map(
+                            (key) => (
+                              <th key={key}>
+                                {key.replace(
+                                  /_/g,
+                                  " "
+                                )}
+                              </th>
+                            )
+                          )}
 
                       </tr>
 
@@ -1831,25 +1904,39 @@ function App() {
                       {(
                         sourceData.payment_preview ||
                         []
-                      ).map((row, index) => (
+                      ).map(
+                        (row, index) => (
 
-                        <tr key={index}>
+                          <tr
+                            key={index}
+                          >
 
-                          {Object.values(row).map(
-                            (value, valueIndex) => (
+                            {Object.values(
+                              row
+                            ).map(
+                              (
+                                value,
+                                valueIndex
+                              ) => (
 
-                              <td key={valueIndex}>
-                                {String(
-                                  value ?? "—"
-                                )}
-                              </td>
+                                <td
+                                  key={
+                                    valueIndex
+                                  }
+                                >
+                                  {String(
+                                    value ??
+                                      "—"
+                                  )}
+                                </td>
 
-                            )
-                          )}
+                              )
+                            )}
 
-                        </tr>
+                          </tr>
 
-                      ))}
+                        )
+                      )}
 
                     </tbody>
 
@@ -1875,17 +1962,18 @@ function App() {
 
                         {sourceData.settlement_preview?.[0] &&
                           Object.keys(
-                            sourceData.settlement_preview[0]
-                          ).map((key) => (
-
-                            <th key={key}>
-                              {key.replace(
-                                /_/g,
-                                " "
-                              )}
-                            </th>
-
-                          ))}
+                            sourceData
+                              .settlement_preview[0]
+                          ).map(
+                            (key) => (
+                              <th key={key}>
+                                {key.replace(
+                                  /_/g,
+                                  " "
+                                )}
+                              </th>
+                            )
+                          )}
 
                       </tr>
 
@@ -1896,25 +1984,39 @@ function App() {
                       {(
                         sourceData.settlement_preview ||
                         []
-                      ).map((row, index) => (
+                      ).map(
+                        (row, index) => (
 
-                        <tr key={index}>
+                          <tr
+                            key={index}
+                          >
 
-                          {Object.values(row).map(
-                            (value, valueIndex) => (
+                            {Object.values(
+                              row
+                            ).map(
+                              (
+                                value,
+                                valueIndex
+                              ) => (
 
-                              <td key={valueIndex}>
-                                {String(
-                                  value ?? "—"
-                                )}
-                              </td>
+                                <td
+                                  key={
+                                    valueIndex
+                                  }
+                                >
+                                  {String(
+                                    value ??
+                                      "—"
+                                  )}
+                                </td>
 
-                            )
-                          )}
+                              )
+                            )}
 
-                        </tr>
+                          </tr>
 
-                      ))}
+                        )
+                      )}
 
                     </tbody>
 
@@ -1962,7 +2064,8 @@ function App() {
                     </span>
 
                     <strong>
-                      {analytics.batch_size ?? 0}
+                      {analytics.batch_size ??
+                        0}
                     </strong>
                   </div>
 
@@ -1972,7 +2075,8 @@ function App() {
                     </span>
 
                     <strong>
-                      {analytics.auto_resolved ?? 0}
+                      {analytics.auto_resolved ??
+                        0}
                     </strong>
                   </div>
 
@@ -1982,7 +2086,8 @@ function App() {
                     </span>
 
                     <strong>
-                      {analytics.manual_review ?? 0}
+                      {analytics.manual_review ??
+                        0}
                     </strong>
                   </div>
 
@@ -1992,7 +2097,8 @@ function App() {
                     </span>
 
                     <strong>
-                      {analytics.escalated ?? 0}
+                      {analytics.escalated ??
+                        0}
                     </strong>
                   </div>
 
@@ -2002,7 +2108,8 @@ function App() {
                     </span>
 
                     <strong>
-                      {analytics.unresolved ?? 0}
+                      {analytics.unresolved ??
+                        0}
                     </strong>
                   </div>
 
@@ -2017,26 +2124,34 @@ function App() {
                   {[
                     [
                       "Auto Resolved",
-                      analytics.auto_resolved ?? 0,
+                      analytics.auto_resolved ??
+                        0,
                       "auto",
                     ],
                     [
                       "Manual Review",
-                      analytics.manual_review ?? 0,
+                      analytics.manual_review ??
+                        0,
                       "manual",
                     ],
                     [
                       "Escalated",
-                      analytics.escalated ?? 0,
+                      analytics.escalated ??
+                        0,
                       "escalated",
                     ],
                     [
                       "Unresolved",
-                      analytics.unresolved ?? 0,
+                      analytics.unresolved ??
+                        0,
                       "unresolved",
                     ],
                   ].map(
-                    ([label, value, className]) => (
+                    ([
+                      label,
+                      value,
+                      className,
+                    ]) => (
 
                       <div
                         className="bar-row"
@@ -2066,7 +2181,8 @@ function App() {
                                       (
                                         value /
                                         analytics.exceptions
-                                      ) * 100,
+                                      ) *
+                                        100,
                                       100
                                     )
                                   : 0
@@ -2109,14 +2225,16 @@ function App() {
                 </h2>
 
                 <p>
-                  Reconciliation performance summary
+                  Reconciliation performance
+                  summary
                 </p>
 
               </div>
 
               <div className="exception-count">
-                {summary?.total_transactions || 0}
-                {" "}Transactions
+                {summary?.total_transactions ||
+                  0}{" "}
+                Transactions
               </div>
 
             </div>
@@ -2205,7 +2323,8 @@ function App() {
                               ? (
                                   summary.matched /
                                   summary.total_transactions
-                                ) * 100
+                                ) *
+                                100
                               : 0
                           }%`,
                         }}
@@ -2239,7 +2358,8 @@ function App() {
                               ? (
                                   summary.exceptions /
                                   summary.total_transactions
-                                ) * 100
+                                ) *
+                                100
                               : 0
                           }%`,
                         }}
@@ -2296,14 +2416,15 @@ function App() {
               </h2>
 
               <p>
-                Complete transaction reconciliation results
+                Complete transaction
+                reconciliation results
               </p>
 
             </div>
 
             <div className="exception-count">
-              {reconciliation.length}
-              {" "}Transactions
+              {reconciliation.length}{" "}
+              Transactions
             </div>
 
           </div>
@@ -2315,14 +2436,18 @@ function App() {
               placeholder="Search Payment ID..."
               value={reconSearch}
               onChange={(e) =>
-                setReconSearch(e.target.value)
+                setReconSearch(
+                  e.target.value
+                )
               }
             />
 
             <select
               value={statusFilter}
               onChange={(e) =>
-                setStatusFilter(e.target.value)
+                setStatusFilter(
+                  e.target.value
+                )
               }
             >
 
@@ -2342,7 +2467,9 @@ function App() {
 
             <button
               className="reset-button"
-              onClick={resetReconFilters}
+              onClick={
+                resetReconFilters
+              }
             >
               Reset
             </button>
@@ -2370,13 +2497,16 @@ function App() {
           {!reconciliation.length ? (
 
             <div className="loading">
-              Loading reconciliation results...
+              Loading reconciliation
+              results...
             </div>
 
-          ) : filteredReconciliation.length === 0 ? (
+          ) : filteredReconciliation.length ===
+            0 ? (
 
             <div className="loading">
-              No transactions match your filters.
+              No transactions match your
+              filters.
             </div>
 
           ) : (
@@ -2403,14 +2533,19 @@ function App() {
                 <tbody>
 
                   {filteredReconciliation.map(
-                    (transaction, index) => (
+                    (
+                      transaction,
+                      index
+                    ) => (
 
                       <tr
                         key={`${transaction.payment_id}-${index}`}
                       >
 
                         <td className="payment-id">
-                          {transaction.payment_id}
+                          {
+                            transaction.payment_id
+                          }
                         </td>
 
                         <td>
@@ -2423,13 +2558,16 @@ function App() {
                                 : "high"
                             }`}
                           >
-                            {transaction.status}
+                            {
+                              transaction.status
+                            }
                           </span>
 
                         </td>
 
                         <td>
-                          {transaction.reason || "—"}
+                          {transaction.reason ||
+                            "—"}
                         </td>
 
                         <td>
@@ -2529,14 +2667,18 @@ function App() {
               placeholder="Search Payment ID..."
               value={searchTerm}
               onChange={(e) =>
-                setSearchTerm(e.target.value)
+                setSearchTerm(
+                  e.target.value
+                )
               }
             />
 
             <select
               value={riskFilter}
               onChange={(e) =>
-                setRiskFilter(e.target.value)
+                setRiskFilter(
+                  e.target.value
+                )
               }
             >
 
@@ -2561,7 +2703,9 @@ function App() {
             <select
               value={decisionFilter}
               onChange={(e) =>
-                setDecisionFilter(e.target.value)
+                setDecisionFilter(
+                  e.target.value
+                )
               }
             >
 
@@ -2616,10 +2760,12 @@ function App() {
               Loading exceptions...
             </div>
 
-          ) : filteredExceptions.length === 0 ? (
+          ) : filteredExceptions.length ===
+            0 ? (
 
             <div className="loading">
-              No exceptions match your filters.
+              No exceptions match your
+              filters.
             </div>
 
           ) : (
@@ -2649,18 +2795,24 @@ function App() {
                 <tbody>
 
                   {filteredExceptions.map(
-                    (exception, index) => (
+                    (
+                      exception,
+                      index
+                    ) => (
 
                       <tr
                         key={`${exception.payment_id}-${index}`}
                       >
 
                         <td className="payment-id">
-                          {exception.payment_id}
+                          {
+                            exception.payment_id
+                          }
                         </td>
 
                         <td>
-                          {exception.reason || "—"}
+                          {exception.reason ||
+                            "—"}
                         </td>
 
                         <td>
@@ -2683,11 +2835,14 @@ function App() {
 
                           <span
                             className={`risk-badge ${String(
-                              exception.risk_level || ""
+                              exception.risk_level ||
+                                ""
                             ).toLowerCase()}`}
                           >
-                            {exception.risk_level ||
-                              "N/A"}
+                            {
+                              exception.risk_level ||
+                              "N/A"
+                            }
                           </span>
 
                         </td>
@@ -2709,15 +2864,19 @@ function App() {
                         <td>
 
                           <span className="decision-badge">
-                            {exception.decision ||
-                              "N/A"}
+                            {
+                              exception.decision ||
+                              "N/A"
+                            }
                           </span>
 
                         </td>
 
                         <td>
-                          {exception.recommended_action ||
-                            "—"}
+                          {
+                            exception.recommended_action ||
+                            "—"
+                          }
                         </td>
 
                         <td>
@@ -2769,7 +2928,9 @@ function App() {
 
             <div className="loading">
               Select an exception and click
-              <strong> View Details </strong>
+              <strong>
+                {" "}View Details{" "}
+              </strong>
               to investigate.
             </div>
 
@@ -2812,7 +2973,8 @@ function App() {
                   </span>
 
                   <strong>
-                    {details.status || "N/A"}
+                    {details.status ||
+                      "N/A"}
                   </strong>
 
                 </div>
@@ -2842,7 +3004,8 @@ function App() {
                     {details.ai_analysis
                       ?.confidence !== null &&
                     details.ai_analysis
-                      ?.confidence !== undefined
+                      ?.confidence !==
+                      undefined
                       ? `${(
                           details.ai_analysis.confidence *
                           100
@@ -2900,7 +3063,8 @@ function App() {
                     Settled Amount:
                   </strong>{" "}
                   {details.reconciliation
-                    ?.settled_amount !== null &&
+                    ?.settled_amount !==
+                    null &&
                   details.reconciliation
                     ?.settled_amount !==
                     undefined
@@ -2960,7 +3124,8 @@ function App() {
                   <strong>
                     AI Method:
                   </strong>{" "}
-                  {details.ai_analysis?.ai_method ||
+                  {details.ai_analysis
+                    ?.ai_method ||
                     "N/A"}
                 </p>
 
@@ -2968,7 +3133,8 @@ function App() {
                   <strong>
                     Anomaly Status:
                   </strong>{" "}
-                  {details.ai_analysis?.is_anomalous
+                  {details.ai_analysis
+                    ?.is_anomalous
                     ? "ANOMALY DETECTED"
                     : "NORMAL"}
                 </p>
@@ -2977,12 +3143,15 @@ function App() {
                   <strong>
                     Anomaly Confidence:
                   </strong>{" "}
-                  {details.ai_analysis?.anomaly_confidence !==
+                  {details.ai_analysis
+                    ?.anomaly_confidence !==
                     null &&
-                  details.ai_analysis?.anomaly_confidence !==
+                  details.ai_analysis
+                    ?.anomaly_confidence !==
                     undefined
                     ? `${(
-                        details.ai_analysis.anomaly_confidence *
+                        details.ai_analysis
+                          .anomaly_confidence *
                         100
                       ).toFixed(1)}%`
                     : "N/A"}
@@ -2992,11 +3161,14 @@ function App() {
                   <strong>
                     Anomaly Score:
                   </strong>{" "}
-                  {details.ai_analysis?.anomaly_score !==
+                  {details.ai_analysis
+                    ?.anomaly_score !==
                     null &&
-                  details.ai_analysis?.anomaly_score !==
+                  details.ai_analysis
+                    ?.anomaly_score !==
                     undefined
-                    ? details.ai_analysis.anomaly_score
+                    ? details.ai_analysis
+                        .anomaly_score
                     : "N/A"}
                 </p>
 
@@ -3004,7 +3176,8 @@ function App() {
                   <strong>
                     Risk Level:
                   </strong>{" "}
-                  {details.ai_analysis?.risk_level ||
+                  {details.ai_analysis
+                    ?.risk_level ||
                     "N/A"}
                 </p>
 
@@ -3012,9 +3185,11 @@ function App() {
                   <strong>
                     Difference Percentage:
                   </strong>{" "}
-                  {details.ai_analysis?.difference_percentage !==
+                  {details.ai_analysis
+                    ?.difference_percentage !==
                     null &&
-                  details.ai_analysis?.difference_percentage !==
+                  details.ai_analysis
+                    ?.difference_percentage !==
                     undefined
                     ? `${details.ai_analysis.difference_percentage}%`
                     : "N/A"}
@@ -3024,7 +3199,8 @@ function App() {
                   <strong>
                     Possible Cause:
                   </strong>{" "}
-                  {details.ai_analysis?.possible_cause ||
+                  {details.ai_analysis
+                    ?.possible_cause ||
                     "N/A"}
                 </p>
 
@@ -3032,7 +3208,8 @@ function App() {
                   <strong>
                     AI Explanation:
                   </strong>{" "}
-                  {details.ai_analysis?.explanation ||
+                  {details.ai_analysis
+                    ?.explanation ||
                     "N/A"}
                 </p>
 
@@ -3040,7 +3217,8 @@ function App() {
                   <strong>
                     Recommended Action:
                   </strong>{" "}
-                  {details.ai_analysis?.recommended_action ||
+                  {details.ai_analysis
+                    ?.recommended_action ||
                     "N/A"}
                 </p>
 
@@ -3084,22 +3262,25 @@ function App() {
 
                   {Object.entries(
                     details.audit
-                  ).map(([key, value]) => (
+                  ).map(
+                    ([key, value]) => (
 
-                    <p key={key}>
+                      <p key={key}>
 
-                      <strong>
-                        {key.replace(
-                          /_/g,
-                          " "
-                        )}:
-                      </strong>{" "}
+                        <strong>
+                          {key.replace(
+                            /_/g,
+                            " "
+                          )}
+                          :
+                        </strong>{" "}
 
-                      {String(value)}
+                        {String(value)}
 
-                    </p>
+                      </p>
 
-                  ))}
+                    )
+                  )}
 
                 </div>
 

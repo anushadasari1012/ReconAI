@@ -6,6 +6,7 @@ body,
   margin: 0;
   padding: 0;
 }
+
 /* =========================
    GLOBAL
    ========================= */
@@ -31,10 +32,8 @@ body {
     "Segoe UI",
     Arial,
     sans-serif;
-
   color: #1f2937;
 }
-
 
 /* =========================
    DASHBOARD
@@ -42,7 +41,6 @@ body {
 
 .dashboard {
   min-height: 100vh;
-
   background:
     radial-gradient(
       circle at 10% 10%,
@@ -60,10 +58,8 @@ body {
       #063b91 50%,
       #021d55 100%
     );
-
   overflow-x: hidden;
 }
-
 
 /* =========================
    HEADER
@@ -71,33 +67,25 @@ body {
 
 .header {
   width: 100%;
-
   background: rgba(255, 255, 255, 0.98);
-
   padding: 25px 50px;
-
   display: flex;
   justify-content: space-between;
   align-items: center;
-
   border-bottom: 1px solid #e5e7eb;
-
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
 }
 
 .header h1 {
   margin: 0;
-
   font-size: 32px;
   color: #081b3d;
 }
 
 .header p {
   margin: 6px 0 0;
-
   color: #6b7280;
 }
-
 
 /* =========================
    HEADER AUTH
@@ -125,7 +113,6 @@ body {
   color: #6b7280;
 }
 
-
 /* =========================
    STATUS
    ========================= */
@@ -134,7 +121,6 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-
   color: #16a34a;
   font-weight: bold;
 }
@@ -142,37 +128,57 @@ body {
 .status-dot {
   width: 10px;
   height: 10px;
-
   background: #16a34a;
-
   border-radius: 50%;
 }
-
 
 /* =========================
    LOGOUT
    ========================= */
 
 .logout-button {
-  padding: 9px 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
 
-  border: none;
-  border-radius: 6px;
+  padding: 9px 16px;
+
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+
+  background: #ffffff;
+  color: #111827;
+
+  font-size: 14px;
+  font-weight: 600;
 
   cursor: pointer;
 
-  font-weight: 600;
-
-  background: #f3f4f6;
-  color: #111827;
-
-  transition: 0.2s;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
 }
 
 .logout-button:hover {
-  background: #e5e7eb;
+  background: #f3f4f6;
+  border-color: #d1d5db;
 }
 
+.logout-button:active {
+  transform: scale(0.98);
+}
+
+.logout-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+}
 
 /* =========================
    MAIN
@@ -180,18 +186,14 @@ body {
 
 main {
   width: 100%;
-
   padding: 40px 50px;
-
   max-width: 1400px;
-
   margin: 0 auto;
 }
 
 main h2 {
   margin-bottom: 25px;
 }
-
 
 /* =========================
    SECTION HEADINGS
@@ -202,11 +204,9 @@ main > h2,
 .exceptions-section h2,
 .reports-section h2 {
   color: white;
-
   text-shadow:
     0 2px 5px rgba(0, 0, 0, 0.25);
 }
-
 
 /* =========================
    OVERVIEW CARDS
@@ -214,50 +214,37 @@ main > h2,
 
 .cards {
   display: grid;
-
   grid-template-columns: repeat(4, 1fr);
-
   gap: 20px;
 }
 
 .card {
   background: rgba(255, 255, 255, 0.98);
-
   padding: 25px;
-
   border-radius: 12px;
-
   border: 1px solid rgba(255, 255, 255, 0.5);
-
   box-shadow:
     0 10px 25px rgba(0, 0, 0, 0.12);
-
   transition: 0.2s;
 }
 
 .card:hover {
   transform: translateY(-3px);
-
   box-shadow:
     0 15px 30px rgba(0, 0, 0, 0.16);
 }
 
 .card p {
   margin: 0;
-
   color: #64748b;
-
   font-size: 16px;
 }
 
 .card h3 {
   font-size: 32px;
-
   margin: 15px 0 0;
-
   color: #081b3d;
 }
-
 
 /* =========================
    SUMMARY
@@ -265,15 +252,10 @@ main > h2,
 
 .summary {
   background: rgba(255, 255, 255, 0.98);
-
   margin-top: 30px;
-
   padding: 30px;
-
   border-radius: 12px;
-
   border: 1px solid rgba(255, 255, 255, 0.5);
-
   box-shadow:
     0 10px 25px rgba(0, 0, 0, 0.12);
 }
@@ -282,35 +264,27 @@ main > h2,
   color: #081b3d;
 }
 
-
 /* =========================
    PROGRESS
    ========================= */
 
 .progress-container {
   width: 100%;
-
   height: 18px;
-
   background: #e5e7eb;
-
   border-radius: 10px;
-
   overflow: hidden;
 }
 
 .progress {
   height: 100%;
-
   background: linear-gradient(
     90deg,
     #2563eb,
     #1683ff
   );
-
   border-radius: 10px;
 }
-
 
 /* =========================
    ANALYTICS
@@ -322,24 +296,17 @@ main > h2,
 
 .analytics-cards {
   display: grid;
-
   grid-template-columns: repeat(5, 1fr);
-
   gap: 20px;
 }
 
 .analytics-card {
   background: rgba(255, 255, 255, 0.98);
-
   padding: 25px;
-
   border-radius: 12px;
-
   border: 1px solid rgba(255, 255, 255, 0.5);
-
   box-shadow:
     0 10px 25px rgba(0, 0, 0, 0.12);
-
   transition: 0.2s;
 }
 
@@ -349,18 +316,14 @@ main > h2,
 
 .analytics-card span {
   display: block;
-
   color: #6b7280;
-
   margin-bottom: 12px;
 }
 
 .analytics-card strong {
   font-size: 30px;
-
   color: #081b3d;
 }
-
 
 /* =========================
    ANALYTICS PANEL
@@ -368,25 +331,18 @@ main > h2,
 
 .analytics-panel {
   background: rgba(255, 255, 255, 0.98);
-
   margin-top: 30px;
-
   padding: 30px;
-
   border-radius: 12px;
-
   border: 1px solid rgba(255, 255, 255, 0.5);
-
   box-shadow:
     0 10px 25px rgba(0, 0, 0, 0.12);
 }
 
 .analytics-panel h2 {
   margin-top: 0;
-
   color: #081b3d;
 }
-
 
 /* =========================
    BARS
@@ -398,27 +354,20 @@ main > h2,
 
 .bar-label {
   display: flex;
-
   justify-content: space-between;
-
   margin-bottom: 8px;
 }
 
 .bar-container {
   width: 100%;
-
   height: 18px;
-
   background: #e5e7eb;
-
   border-radius: 10px;
-
   overflow: hidden;
 }
 
 .bar {
   height: 100%;
-
   border-radius: 10px;
 }
 
@@ -438,24 +387,19 @@ main > h2,
   background: #dc2626;
 }
 
-
 /* =========================
    EXCEPTIONS
    ========================= */
 
 .exceptions-section {
   margin-top: 45px;
-
   margin-bottom: 50px;
 }
 
 .section-heading {
   display: flex;
-
   justify-content: space-between;
-
   align-items: center;
-
   margin-bottom: 20px;
 }
 
@@ -465,22 +409,16 @@ main > h2,
 
 .section-heading p {
   margin: 0;
-
   color: rgba(255, 255, 255, 0.8);
 }
 
 .exception-count {
   background: #fff1f2;
-
   color: #dc2626;
-
   padding: 10px 16px;
-
   border-radius: 20px;
-
   font-weight: bold;
 }
-
 
 /* =========================
    EXCEPTION FILTERS
@@ -488,26 +426,18 @@ main > h2,
 
 .exception-filters {
   display: flex;
-
   gap: 12px;
-
   flex-wrap: wrap;
-
   margin: 20px 0 10px;
 }
 
 .exception-filters input,
 .exception-filters select {
   padding: 10px 14px;
-
   border: 1px solid #d1d5db;
-
   border-radius: 8px;
-
   background: white;
-
   font-size: 14px;
-
   outline: none;
 }
 
@@ -518,24 +448,17 @@ main > h2,
 .exception-filters input:focus,
 .exception-filters select:focus {
   border-color: #2563eb;
-
   box-shadow:
     0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
 .reset-button {
   padding: 10px 18px;
-
   border: none;
-
   border-radius: 8px;
-
   background: #374151;
-
   color: white;
-
   cursor: pointer;
-
   font-weight: 600;
 }
 
@@ -545,12 +468,9 @@ main > h2,
 
 .filter-result {
   color: rgba(255, 255, 255, 0.85);
-
   font-size: 14px;
-
   margin-bottom: 15px;
 }
-
 
 /* =========================
    TABLE
@@ -558,46 +478,32 @@ main > h2,
 
 .table-container {
   background: white;
-
   border: 1px solid #e5e7eb;
-
   border-radius: 12px;
-
   overflow-x: auto;
-
   box-shadow:
     0 10px 25px rgba(0, 0, 0, 0.12);
 }
 
 .exceptions-table {
   width: 100%;
-
   border-collapse: collapse;
-
   min-width: 1100px;
 }
 
 .exceptions-table th {
   text-align: left;
-
   padding: 16px;
-
   background: #f9fafb;
-
   color: #6b7280;
-
   font-size: 13px;
-
   text-transform: uppercase;
-
   border-bottom: 1px solid #e5e7eb;
 }
 
 .exceptions-table td {
   padding: 16px;
-
   border-bottom: 1px solid #f0f0f0;
-
   font-size: 14px;
 }
 
@@ -607,10 +513,8 @@ main > h2,
 
 .payment-id {
   font-weight: bold;
-
   color: #2563eb;
 }
-
 
 /* =========================
    BADGES
@@ -619,42 +523,32 @@ main > h2,
 .risk-badge,
 .decision-badge {
   display: inline-block;
-
   padding: 6px 10px;
-
   border-radius: 15px;
-
   font-size: 12px;
-
   font-weight: bold;
-
   white-space: nowrap;
 }
 
 .risk-badge.high {
   background: #fee2e2;
-
   color: #dc2626;
 }
 
 .risk-badge.medium {
   background: #fef3c7;
-
   color: #d97706;
 }
 
 .risk-badge.low {
   background: #dcfce7;
-
   color: #16a34a;
 }
 
 .decision-badge {
   background: #eef2ff;
-
   color: #4338ca;
 }
-
 
 /* =========================
    DETAILS BUTTON
@@ -662,30 +556,20 @@ main > h2,
 
 .details-button {
   padding: 8px 14px;
-
   border: none;
-
   border-radius: 6px;
-
   background: #2563eb;
-
   color: white;
-
   cursor: pointer;
-
   font-weight: 600;
-
   white-space: nowrap;
-
   transition: 0.2s;
 }
 
 .details-button:hover {
   background: #1d4ed8;
-
   transform: translateY(-1px);
 }
-
 
 /* =========================
    INVESTIGATION DETAILS
@@ -693,54 +577,38 @@ main > h2,
 
 .details-panel {
   margin-top: 30px;
-
   margin-bottom: 50px;
-
   background: white;
-
   border: 1px solid #e5e7eb;
-
   border-radius: 12px;
-
   padding: 25px;
-
   box-shadow:
     0 10px 25px rgba(0, 0, 0, 0.12);
 }
 
 .details-header {
   display: flex;
-
   justify-content: space-between;
-
   align-items: center;
-
   margin-bottom: 25px;
 }
 
 .details-header h2 {
   margin-bottom: 5px;
-
   color: #081b3d;
 }
 
 .details-header p {
   margin: 0;
-
   color: #6b7280;
 }
 
 .close-button {
   padding: 8px 16px;
-
   border: 1px solid #d1d5db;
-
   border-radius: 6px;
-
   background: white;
-
   cursor: pointer;
-
   font-weight: 600;
 }
 
@@ -748,47 +616,35 @@ main > h2,
   background: #f3f4f6;
 }
 
-
 /* =========================
    DETAILS GRID
    ========================= */
 
 .details-grid {
   display: grid;
-
   grid-template-columns: repeat(4, 1fr);
-
   gap: 15px;
-
   margin-bottom: 25px;
 }
 
 .detail-card {
   padding: 18px;
-
   background: #f9fafb;
-
   border-radius: 10px;
-
   border: 1px solid #e5e7eb;
 }
 
 .detail-card span {
   display: block;
-
   color: #6b7280;
-
   font-size: 13px;
-
   margin-bottom: 8px;
 }
 
 .detail-card strong {
   font-size: 18px;
-
   color: #111827;
 }
-
 
 /* =========================
    ANALYSIS BOX
@@ -796,32 +652,23 @@ main > h2,
 
 .analysis-box {
   margin-top: 20px;
-
   padding: 20px;
-
   background: #f9fafb;
-
   border-radius: 10px;
-
   border: 1px solid #e5e7eb;
 }
 
 .analysis-box h3 {
   margin-top: 0;
-
   margin-bottom: 15px;
-
   color: #081b3d;
 }
 
 .analysis-box p {
   margin: 10px 0;
-
   line-height: 1.6;
-
   color: #374151;
 }
-
 
 /* =========================
    REPORTS
@@ -833,17 +680,13 @@ main > h2,
 
 .report-summary-text {
   margin-top: 25px;
-
   padding-top: 20px;
-
   border-top: 1px solid #e5e7eb;
 }
 
 .report-summary-text p {
   margin: 8px 0;
-
   color: #4b5563;
-
   font-size: 15px;
 }
 
@@ -851,28 +694,21 @@ main > h2,
   font-weight: 700;
 }
 
-
 /* =========================
    LOADING
    ========================= */
 
 .loading {
   background: white;
-
   padding: 30px;
-
   border-radius: 12px;
 }
 
 .loading-screen {
   min-height: 100vh;
-
   display: flex;
-
   align-items: center;
-
   justify-content: center;
-
   background:
     linear-gradient(
       135deg,
@@ -882,20 +718,15 @@ main > h2,
     );
 }
 
-
 /* =========================
    ERROR
    ========================= */
 
 .error-container {
   min-height: 100vh;
-
   display: flex;
-
   justify-content: center;
-
   align-items: center;
-
   background:
     linear-gradient(
       135deg,
@@ -907,13 +738,9 @@ main > h2,
 
 .error-box {
   background: #fff1f2;
-
   border: 1px solid #fecdd3;
-
   padding: 30px;
-
   border-radius: 12px;
-
   text-align: center;
 }
 
@@ -921,29 +748,25 @@ main > h2,
   color: #e11d48;
 }
 
-
 /* =========================================================
    LOGIN PAGE
    ========================================================= */
+
 .login-page {
   min-height: 100vh;
   min-height: 100dvh;
   width: 100%;
-
   display: flex;
   align-items: center;
   justify-content: center;
-
   box-sizing: border-box;
   padding: 30px 20px;
-
   background: linear-gradient(
     135deg,
     #03143d,
     #063b88,
     #0b56a8
   );
-
   overflow-y: auto;
   overflow-x: hidden;
 }
@@ -954,50 +777,34 @@ main > h2,
 
 .login-decoration {
   position: absolute;
-
   pointer-events: none;
-
   border-radius: 50%;
 }
 
 .decoration-1 {
   width: 450px;
-
   height: 450px;
-
   top: -220px;
-
   left: -180px;
-
   background: rgba(30, 136, 229, 0.25);
 }
 
 .decoration-2 {
   width: 400px;
-
   height: 400px;
-
   bottom: -200px;
-
   right: -150px;
-
   background: rgba(14, 165, 233, 0.22);
 }
 
 .decoration-3 {
   width: 600px;
-
   height: 600px;
-
   right: -300px;
-
   top: 5%;
-
   background: transparent;
-
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
-
 
 /* =========================
    LOGIN CARD
@@ -1005,25 +812,17 @@ main > h2,
 
 .login-card {
   position: relative;
-
   z-index: 2;
-
   width: 440px;
-
   max-width: calc(100vw - 40px);
-
-padding: 36px 46px 30px;
+  padding: 36px 46px 30px;
   background: rgba(255, 255, 255, 0.98);
-
   border-radius: 24px;
-
   box-shadow:
     0 25px 60px rgba(0, 0, 0, 0.35),
     0 10px 25px rgba(0, 0, 0, 0.15);
-
   margin: auto;
 }
-
 
 /* =========================
    LOGIN BRAND
@@ -1031,66 +830,45 @@ padding: 36px 46px 30px;
 
 .login-brand {
   display: flex;
-
   align-items: center;
-
   justify-content: center;
-
   gap: 14px;
-
   margin-bottom: 38px;
 }
 
 .recon-logo {
   width: 58px;
-
   height: 58px;
-
   display: flex;
-
   align-items: center;
-
   justify-content: center;
-
   border-radius: 16px;
-
   background:
     linear-gradient(
       135deg,
       #1683ff,
       #0055d4
     );
-
   color: white;
-
   font-size: 36px;
-
   font-weight: 800;
-
   box-shadow:
     0 8px 20px rgba(0, 102, 255, 0.3);
 }
 
 .login-brand h1 {
   margin: 0;
-
   font-size: 42px;
-
   line-height: 1;
-
   color: #081b3d;
-
   font-weight: 750;
 }
 
 .login-brand p {
   margin: 7px 0 0;
-
   color: #526581;
-
   font-size: 15px;
 }
-
 
 /* =========================
    LOGIN FORM
@@ -1106,13 +884,9 @@ padding: 36px 46px 30px;
 
 .input-group label {
   display: block;
-
   margin-bottom: 9px;
-
   color: #142746;
-
   font-size: 15px;
-
   font-weight: 650;
 }
 
@@ -1122,29 +896,19 @@ padding: 36px 46px 30px;
 
 .input-wrapper input {
   width: 100%;
-
   height: 54px;
-
   padding: 0 18px 0 48px;
-
   border: 1px solid #cbd5e1;
-
   border-radius: 10px;
-
   outline: none;
-
   background: white;
-
   color: #172b4d;
-
   font-size: 15px;
-
   transition: 0.2s;
 }
 
 .input-wrapper input:focus {
   border-color: #1677ff;
-
   box-shadow:
     0 0 0 3px rgba(22, 119, 255, 0.12);
 }
@@ -1155,20 +919,13 @@ padding: 36px 46px 30px;
 
 .input-icon {
   position: absolute;
-
   left: 17px;
-
   top: 50%;
-
   transform: translateY(-50%);
-
   z-index: 2;
-
   font-size: 17px;
-
   opacity: 0.6;
 }
-
 
 /* =========================
    LOGIN BUTTON
@@ -1176,46 +933,33 @@ padding: 36px 46px 30px;
 
 .login-button {
   width: 100%;
-
   height: 54px;
-
   margin-top: 8px;
-
   border: none;
-
   border-radius: 10px;
-
   background:
     linear-gradient(
       135deg,
       #1683ff,
       #0055d4
     );
-
   color: white;
-
   font-size: 16px;
-
   font-weight: 650;
-
   cursor: pointer;
-
   transition: 0.2s;
 }
 
 .login-button:hover {
   transform: translateY(-1px);
-
   box-shadow:
     0 8px 20px rgba(0, 91, 214, 0.35);
 }
 
 .login-button:disabled {
   opacity: 0.6;
-
   cursor: not-allowed;
 }
-
 
 /* =========================
    LOGIN ERROR
@@ -1223,20 +967,13 @@ padding: 36px 46px 30px;
 
 .login-error {
   margin-bottom: 15px;
-
   padding: 11px;
-
   border-radius: 8px;
-
   text-align: center;
-
   background: #fee2e2;
-
   color: #b91c1c;
-
   font-size: 14px;
 }
-
 
 /* =========================
    SECURITY
@@ -1248,39 +985,28 @@ padding: 36px 46px 30px;
 
 .security-line {
   display: flex;
-
   align-items: center;
-
   gap: 12px;
-
   color: #47617f;
-
   font-size: 13px;
 }
 
 .security-line span {
   flex: 1;
-
   height: 1px;
-
   background: #d8e0eb;
 }
 
 .security-items {
   display: flex;
-
   justify-content: center;
-
   gap: 35px;
-
   margin-top: 25px;
 }
 
 .security-items > div {
   display: flex;
-
   align-items: center;
-
   gap: 7px;
 }
 
@@ -1290,12 +1016,9 @@ padding: 36px 46px 30px;
 
 .security-items p {
   margin: 0;
-
   color: #435a78;
-
   font-size: 13px;
 }
-
 
 /* =========================
    LOGIN FOOTER
@@ -1303,21 +1026,16 @@ padding: 36px 46px 30px;
 
 .login-footer {
   margin-top: 32px;
-
   text-align: center;
-
   color: #71829b;
-
   font-size: 12px;
 }
-
 
 /* =========================================================
    RESPONSIVE
    ========================================================= */
 
 @media (max-width: 1000px) {
-
   .cards {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -1331,9 +1049,7 @@ padding: 36px 46px 30px;
   }
 }
 
-
 @media (max-width: 800px) {
-
   .header,
   main {
     padding: 25px;
@@ -1341,15 +1057,12 @@ padding: 36px 46px 30px;
 
   .header {
     flex-direction: column;
-
     align-items: flex-start;
-
     gap: 20px;
   }
 
   .header-right {
     width: 100%;
-
     justify-content: space-between;
   }
 
@@ -1358,9 +1071,7 @@ padding: 36px 46px 30px;
   }
 }
 
-
 @media (max-width: 600px) {
-
   main {
     padding: 25px 15px;
   }
@@ -1379,9 +1090,7 @@ padding: 36px 46px 30px;
 
   .details-header {
     flex-direction: column;
-
     align-items: flex-start;
-
     gap: 15px;
   }
 
@@ -1391,17 +1100,13 @@ padding: 36px 46px 30px;
 
   .login-page {
     align-items: flex-start;
-
     padding-top: 30px;
-
     overflow-y: auto;
   }
 
   .login-card {
     width: calc(100% - 40px);
-
     padding: 32px 25px 25px;
-
     margin: 20px;
   }
 
@@ -1415,23 +1120,31 @@ padding: 36px 46px 30px;
 
   .recon-logo {
     width: 50px;
-
     height: 50px;
-
     font-size: 31px;
   }
 
   .security-items {
     gap: 15px;
   }
+
+  .logout-button {
+    padding: 8px 12px;
+  }
 }
 
-/* ALL DASHBOARD HEADINGS WHITE */
+/* =========================
+   ALL DASHBOARD HEADINGS WHITE
+   ========================= */
+
 .dashboard h2 {
   color: #ffffff !important;
 }
 
-/* BLACK HEADINGS */
+/* =========================
+   BLACK HEADINGS
+   ========================= */
+
 .overview-section h3,
 .analytics-section h3,
 .reports-section h3 {
@@ -1465,7 +1178,8 @@ padding: 36px 46px 30px;
 
 .pipeline-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 6px 18px rgba(0, 0, 0, 0.06);
 }
 
 .pipeline-complete {
@@ -1582,7 +1296,9 @@ padding: 36px 46px 30px;
   font-size: 12px;
 }
 
-/* Source data preview */
+/* =========================
+   SOURCE DATA PREVIEW
+   ========================= */
 
 .source-preview {
   margin-top: 24px;
@@ -1616,7 +1332,9 @@ padding: 36px 46px 30px;
   color: #4b5563;
 }
 
-/* Responsive layout */
+/* =========================
+   PIPELINE RESPONSIVE
+   ========================= */
 
 @media (max-width: 900px) {
   .pipeline-container {
@@ -1636,29 +1354,4 @@ padding: 36px 46px 30px;
   .pipeline-card {
     padding: 16px;
   }
-}
-
-/* =========================
-   LOGOUT BUTTON
-   ========================= */
-
-.logout-button {
-  padding: 9px 16px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  background: #ffffff;
-  color: #111827;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.logout-button:hover {
-  background: #f3f4f6;
-  border-color: #d1d5db;
-}
-
-.logout-button:active {
-  transform: scale(0.98);
 }
