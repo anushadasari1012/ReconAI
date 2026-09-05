@@ -1637,3 +1637,28 @@ padding: 36px 46px 30px;
     padding: 16px;
   }
 }
+
+/* =========================
+   LOGOUT BUTTON
+   ========================= */
+
+.logout-button {
+  padding: 9px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.logout-button:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.logout-button:active {
+  transform: scale(0.98);
+}

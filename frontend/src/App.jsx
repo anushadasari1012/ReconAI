@@ -121,8 +121,12 @@ function App() {
 
       setToken(data.access_token);
 
-      // Every successful login starts with fresh upload state.
-      // sourceUploaded is intentionally NOT stored in localStorage.
+      // =========================
+      // RESET APPLICATION STATE
+      // =========================
+
+      // Every successful login requires
+      // a fresh source dataset upload.
       setUser(null);
 
       setSourceUploaded(false);
@@ -143,6 +147,7 @@ function App() {
 
       setSelectedException(null);
       setDetails(null);
+      setDetailsLoading(false);
 
       setError("");
 
@@ -157,6 +162,80 @@ function App() {
     } finally {
       setLoginLoading(false);
     }
+  }
+
+  // =========================
+  // LOGOUT
+  // =========================
+
+  function handleLogout() {
+    // Remove JWT from browser storage.
+    localStorage.removeItem("token");
+
+    // Clear authentication.
+    setToken(null);
+    setUser(null);
+
+    // =========================
+    // CLEAR SOURCE DATA STATE
+    // =========================
+
+    setSourceUploaded(false);
+    setPaymentFile(null);
+    setSettlementFile(null);
+    setSourceData(null);
+    setSourceDataLoaded(false);
+
+    // =========================
+    // CLEAR PIPELINE STATE
+    // =========================
+
+    setReconciliationRun(false);
+    setPipelineMessage("");
+    setUploadError("");
+
+    // =========================
+    // CLEAR DASHBOARD STATE
+    // =========================
+
+    setSummary(null);
+    setAnalytics(null);
+    setExceptions([]);
+    setReconciliation([]);
+    setHealth(null);
+
+    // =========================
+    // CLEAR INVESTIGATION
+    // =========================
+
+    setSelectedException(null);
+    setDetails(null);
+    setDetailsLoading(false);
+
+    // =========================
+    // CLEAR FILTERS
+    // =========================
+
+    setSearchTerm("");
+    setRiskFilter("ALL");
+    setDecisionFilter("ALL");
+
+    setReconSearch("");
+    setStatusFilter("ALL");
+
+    // =========================
+    // CLEAR ERRORS
+    // =========================
+
+    setError("");
+    setLoginError("");
+
+    // =========================
+    // CLEAR LOGIN FIELDS
+    // =========================
+
+    setUsername("");
+    setPassword("");
   }
 
   // =========================
@@ -204,6 +283,7 @@ function App() {
 
       setSelectedException(null);
       setDetails(null);
+      setDetailsLoading(false);
 
       throw new Error("Your session has expired.");
     }
@@ -485,12 +565,18 @@ function App() {
     async function initializeDashboard() {
       try {
         await handleLoadSourceData();
+
         await loadDashboardData();
 
-        // IMPORTANT:
+        // IMPORTANT FIX:
         // loadDashboardData() calls /reconcile.
-        // Once it succeeds, enable AI Investigation.
+        // Once it succeeds, reconciliation is complete
+        // and AI Investigation must be unlocked.
         setReconciliationRun(true);
+
+        setPipelineMessage(
+          "Source data loaded and reconciliation completed successfully. AI Investigation is now ready."
+        );
       } catch {
         // Errors are handled by individual functions.
       }
@@ -608,20 +694,27 @@ function App() {
       return;
     }
 
+    if (!exceptions.length) {
+      setPipelineMessage(
+        "No exceptions are available for AI investigation."
+      );
+      return;
+    }
+
     setPipelineMessage(
-      "AI investigation is ready. Select an exception below to investigate."
+      "AI Investigation is ready. Select an exception below and click View Details."
     );
 
-    const investigationSection =
-      document.getElementById(
-        "investigation"
-      );
-
-    if (investigationSection) {
-      investigationSection.scrollIntoView({
-        behavior: "smooth",
-      });
-    }
+    // Scroll to Exceptions section.
+    // The user can select an exception there.
+    setTimeout(() => {
+      document
+        .getElementById("exceptions")
+        ?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+    }, 100);
   };
 
   // =========================
@@ -1276,6 +1369,18 @@ function App() {
 
           </div>
 
+          {/* =========================
+              LOGOUT BUTTON
+              ========================= */}
+
+          <button
+            type="button"
+            className="logout-button"
+            onClick={handleLogout}
+          >
+            Logout
+          </button>
+
         </div>
 
       </header>
@@ -1600,7 +1705,9 @@ function App() {
                     !reconciliationRun
                   }
                 >
-                  Run AI Investigation
+                  {reconciliationRun
+                    ? "Run AI Investigation"
+                    : "AI Investigation Locked"}
                 </button>
 
               </div>
