@@ -31,8 +31,7 @@ function App() {
 
   // React state only.
   // NEVER stored in localStorage.
-  // This controls whether source datasets have been uploaded
-  // during the current application session.
+  // Every login requires fresh CSV upload.
   const [sourceUploaded, setSourceUploaded] = useState(false);
 
   const [paymentFile, setPaymentFile] = useState(null);
@@ -182,6 +181,7 @@ function App() {
     // Token is invalid/expired.
     if (response.status === 401) {
       localStorage.removeItem("token");
+
       setToken(null);
       setUser(null);
 
@@ -235,8 +235,6 @@ function App() {
 
         const data = await response.json();
 
-        // Your backend returns:
-        // { user: {...} }
         if (!data.user) {
           throw new Error(
             "User information was not returned."
@@ -251,6 +249,7 @@ function App() {
         );
 
         localStorage.removeItem("token");
+
         setToken(null);
         setUser(null);
       }
@@ -349,6 +348,13 @@ function App() {
       );
 
       // =========================
+      // IMPORTANT FIX
+      // =========================
+      // /reconcile has completed successfully.
+      // Therefore reconciliation is considered completed.
+      setReconciliationRun(true);
+
+      // =========================
       // ADMIN ANALYTICS
       // =========================
 
@@ -444,6 +450,11 @@ function App() {
       // NEVER store sourceUploaded in localStorage.
       setSourceUploaded(true);
 
+      // Reset pipeline state for the new uploaded batch.
+      setSourceDataLoaded(false);
+      setSourceData(null);
+      setReconciliationRun(false);
+
       setPipelineMessage(
         `Source datasets uploaded successfully: ${data.payment_records} payment records and ${data.settlement_records} settlement records.`
       );
@@ -475,6 +486,11 @@ function App() {
       try {
         await handleLoadSourceData();
         await loadDashboardData();
+
+        // IMPORTANT:
+        // loadDashboardData() calls /reconcile.
+        // Once it succeeds, enable AI Investigation.
+        setReconciliationRun(true);
       } catch {
         // Errors are handled by individual functions.
       }
@@ -557,16 +573,21 @@ function App() {
     try {
       await loadDashboardData();
 
+      // Reconciliation succeeded.
       setReconciliationRun(true);
 
       setPipelineMessage(
-        "Reconciliation completed successfully."
+        "Reconciliation completed successfully. AI Investigation is now ready."
       );
     } catch (err) {
       console.error(
         "Reconciliation error:",
         err
       );
+
+      // If reconciliation failed,
+      // AI Investigation must remain locked.
+      setReconciliationRun(false);
 
       setPipelineMessage(
         err.message ||
