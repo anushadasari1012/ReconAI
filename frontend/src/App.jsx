@@ -8,9 +8,11 @@ function App() {
   // AUTHENTICATION
   // =========================
 
-  // Do NOT restore token from localStorage.
-  // Every fresh page/session starts at Login.
-  const [token, setToken] = useState(null);
+  // Restore JWT from localStorage.
+  // This keeps the user authenticated after page refresh.
+  const [token, setToken] = useState(
+    localStorage.getItem("token")
+  );
 
   const [user, setUser] = useState(null);
 
@@ -28,8 +30,9 @@ function App() {
   const [sourceData, setSourceData] = useState(null);
 
   // React state only.
-  // Never stored in localStorage.
-  // Every login requires fresh CSV upload.
+  // NEVER stored in localStorage.
+  // This controls whether source datasets have been uploaded
+  // during the current application session.
   const [sourceUploaded, setSourceUploaded] = useState(false);
 
   const [paymentFile, setPaymentFile] = useState(null);
@@ -110,11 +113,17 @@ function App() {
         );
       }
 
-      // Token exists only in React state.
-      // It is NOT saved in localStorage.
+      // Save JWT in localStorage.
+      // This allows authentication to survive page refresh.
+      localStorage.setItem(
+        "token",
+        data.access_token
+      );
+
       setToken(data.access_token);
 
-      // Every successful login starts with fresh upload.
+      // Every successful login starts with fresh upload state.
+      // sourceUploaded is intentionally NOT stored in localStorage.
       setUser(null);
 
       setSourceUploaded(false);
@@ -152,129 +161,11 @@ function App() {
   }
 
   // =========================
-  // LOGOUT
-  // =========================
-
-  function handleLogout() {
-    // No localStorage token to remove.
-    setToken(null);
-    setUser(null);
-
-    setSummary(null);
-    setAnalytics(null);
-    setExceptions([]);
-    setReconciliation([]);
-    setHealth(null);
-
-    setSelectedException(null);
-    setDetails(null);
-
-    // Reset source upload state.
-    // Next login MUST upload both CSV files again.
-    setSourceData(null);
-    setSourceDataLoaded(false);
-    setSourceUploaded(false);
-
-    setPaymentFile(null);
-    setSettlementFile(null);
-
-    setUploadLoading(false);
-    setUploadError("");
-
-    setReconciliationRun(false);
-    setPipelineMessage("");
-
-    setError("");
-    setLoginError("");
-
-    setUsername("");
-    setPassword("");
-  }
-
-  // =====================================================
-  // 5-MINUTE INACTIVITY TIMEOUT
-  // =====================================================
-  //
-  // If the authenticated user does not interact with
-  // the dashboard for 5 minutes, automatically logout.
-  //
-  // Activity that resets the timer:
-  // - Mouse movement
-  // - Mouse click
-  // - Mouse button press
-  // - Keyboard
-  // - Scroll
-  // - Touch
-  //
-  // After logout:
-  // 1. Token becomes null
-  // 2. Login screen appears
-  // 3. Source upload state is reset
-  // 4. Next login requires both CSV files again
-  // =====================================================
-
-  useEffect(() => {
-    if (!token || !user) {
-      return;
-    }
-
-    let inactivityTimer;
-
-    const logoutAfterInactivity = () => {
-      console.log(
-        "User inactive for 5 minutes. Logging out."
-      );
-
-      handleLogout();
-    };
-
-    const resetInactivityTimer = () => {
-      clearTimeout(inactivityTimer);
-
-      inactivityTimer = setTimeout(
-        logoutAfterInactivity,
-        5 * 60 * 1000
-      );
-    };
-
-    const activityEvents = [
-      "mousemove",
-      "mousedown",
-      "keydown",
-      "scroll",
-      "touchstart",
-      "click",
-    ];
-
-    activityEvents.forEach((event) => {
-      window.addEventListener(
-        event,
-        resetInactivityTimer
-      );
-    });
-
-    // Start the timer immediately.
-    resetInactivityTimer();
-
-    return () => {
-      clearTimeout(inactivityTimer);
-
-      activityEvents.forEach((event) => {
-        window.removeEventListener(
-          event,
-          resetInactivityTimer
-        );
-      });
-    };
-  }, [token, user]);
-
-  // =========================
   // AUTHENTICATED FETCH
   // =========================
 
   async function authenticatedFetch(url, options = {}) {
     if (!token) {
-      handleLogout();
       throw new Error("You are not authenticated.");
     }
 
@@ -288,8 +179,32 @@ function App() {
       headers,
     });
 
+    // Token is invalid/expired.
     if (response.status === 401) {
-      handleLogout();
+      localStorage.removeItem("token");
+      setToken(null);
+      setUser(null);
+
+      // Reset application state.
+      setSourceUploaded(false);
+      setSourceData(null);
+      setSourceDataLoaded(false);
+
+      setPaymentFile(null);
+      setSettlementFile(null);
+
+      setReconciliationRun(false);
+      setPipelineMessage("");
+
+      setSummary(null);
+      setAnalytics(null);
+      setExceptions([]);
+      setReconciliation([]);
+      setHealth(null);
+
+      setSelectedException(null);
+      setDetails(null);
+
       throw new Error("Your session has expired.");
     }
 
@@ -297,12 +212,13 @@ function App() {
   }
 
   // =========================
-  // VERIFY USER
+  // VERIFY / RESTORE USER
   // =========================
 
   useEffect(() => {
     async function verifyUser() {
       if (!token) {
+        setUser(null);
         return;
       }
 
@@ -312,11 +228,15 @@ function App() {
         );
 
         if (!response.ok) {
-          throw new Error("Authentication failed.");
+          throw new Error(
+            "Authentication verification failed."
+          );
         }
 
         const data = await response.json();
 
+        // Your backend returns:
+        // { user: {...} }
         if (!data.user) {
           throw new Error(
             "User information was not returned."
@@ -330,6 +250,7 @@ function App() {
           err
         );
 
+        localStorage.removeItem("token");
         setToken(null);
         setUser(null);
       }
@@ -520,14 +441,12 @@ function App() {
       }
 
       // React state only.
-      // NEVER localStorage.
+      // NEVER store sourceUploaded in localStorage.
       setSourceUploaded(true);
 
       setPipelineMessage(
         `Source datasets uploaded successfully: ${data.payment_records} payment records and ${data.settlement_records} settlement records.`
       );
-
-      // Dashboard loading happens in useEffect.
     } catch (err) {
       console.error(
         "Source dataset upload error:",
@@ -590,7 +509,7 @@ function App() {
             errorData.error ||
             message;
         } catch {
-          // Ignore JSON parsing error
+          // Ignore JSON parsing error.
         }
 
         throw new Error(message);
@@ -712,7 +631,7 @@ function App() {
             errorData.error ||
             message;
         } catch {
-          // Ignore JSON parsing error
+          // Ignore JSON parsing error.
         }
 
         throw new Error(message);
@@ -1251,24 +1170,6 @@ function App() {
               dashboard is available.
             </p>
 
-            <button
-              type="button"
-              onClick={handleLogout}
-              style={{
-                width: "100%",
-                marginTop: "10px",
-                padding: "11px 16px",
-                border: "1px solid #d1d5db",
-                borderRadius: "10px",
-                background: "#ffffff",
-                color: "#374151",
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              Logout
-            </button>
-
           </form>
         </div>
       </div>
@@ -1300,13 +1201,6 @@ function App() {
             }
           >
             Retry
-          </button>
-
-          <button
-            className="reset-button"
-            onClick={handleLogout}
-          >
-            Logout
           </button>
 
         </div>
@@ -1360,13 +1254,6 @@ function App() {
               "Connecting..."}
 
           </div>
-
-          <button
-            className="logout-button"
-            onClick={handleLogout}
-          >
-            Logout
-          </button>
 
         </div>
 
